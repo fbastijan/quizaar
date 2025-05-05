@@ -3,8 +3,8 @@ import Config
 # Configure your database
 config :quizaar, Quizaar.Repo,
   username: "postgres",
-  password: "javolimkrafnu123",
-  hostname: "192.168.0.4",
+  password: "12345679",
+  hostname: "localhost",
   database: "quizaar_dev",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,

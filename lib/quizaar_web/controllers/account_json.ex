@@ -1,5 +1,6 @@
 defmodule QuizaarWeb.AccountJSON do
   alias Quizaar.Accounts.Account
+  alias QuizaarWeb.UserJSON
 
   @doc """
   Renders a list of accounts.
@@ -20,6 +21,22 @@ defmodule QuizaarWeb.AccountJSON do
       id: account.id,
       email: account.email,
       hash_password: account.hash_password
+    }
+  end
+
+  def show2(%{account: account, token: token}) do
+    %{
+      id: account.id,
+      email: account.email,
+      token: token
+    }
+  end
+
+  def show_full_account(%{account: account}) do
+    %{
+      id: account.id,
+      email: account.email,
+      user: UserJSON.data(account.user)
     }
   end
 end
