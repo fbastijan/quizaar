@@ -39,4 +39,5 @@ defmodule QuizaarWeb.AccountJSON do
       user: UserJSON.data(account.user)
     }
   end
+
 end

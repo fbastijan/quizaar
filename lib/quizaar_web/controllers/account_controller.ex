@@ -5,12 +5,18 @@ defmodule QuizaarWeb.AccountController do
   alias Quizaar.Accounts.Account
   alias Quizaar.{Users, Users.User}
   alias QuizaarWeb.{Auth.Guardian, Auth.ErrorResponse}
+
   require Logger
 
 
 
 
 
+  action_fallback QuizaarWeb.FallbackController
+
+  import QuizaarWeb.Auth.AuthorizedPlug
+
+  plug :is_authorized when action in [:update, :delete]
 
   def index(conn, _params) do
     accounts = Accounts.list_accounts()
@@ -35,7 +41,6 @@ defmodule QuizaarWeb.AccountController do
         |> Plug.Conn.put_session(:account_id, account.id)
         |> put_status(:ok)
         |> render(:show2, account: account, token: token)
-
 
 
       {:error, :unauthorized} ->
@@ -69,9 +74,9 @@ defmodule QuizaarWeb.AccountController do
     end
   end
 
-  def show(conn, %{"id" => id}) do
-    account = Accounts.get_full_account(id)
-    render(conn, :show_full_account, account: account)
+  def show(conn, %{}) do
+    #account = Accounts.get_full_account(id)
+    render(conn, :show_full_account, account: conn.assigns.account)
   end
 
   def current_account(conn, %{}) do

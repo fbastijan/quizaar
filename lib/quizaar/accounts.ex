@@ -68,6 +68,13 @@ defmodule Quizaar.Accounts do
       {:error, %Ecto.Changeset{}}
 
   """
+    def get_full_account(id) do
+      Account
+      |> where(id: ^id)
+      |> preload(:user)
+      |> Repo.one()
+    end
+
   def create_account(attrs \\ %{}) do
     %Account{}
     |> Account.changeset(attrs)
