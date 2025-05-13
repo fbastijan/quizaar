@@ -7,7 +7,7 @@ import Config
 # Run `mix help test` for more information.
 config :quizaar, Quizaar.Repo,
   username: "postgres",
-  password: "postgres",
+  password: "12345679",
   hostname: "localhost",
   database: "quizaar_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,

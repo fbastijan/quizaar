@@ -44,7 +44,10 @@ defmodule Quizaar.MixProject do
       {:bandit, "~> 1.5"},
       {:guardian, "~> 2.3"},
       {:bcrypt_elixir, "~> 3.0"},
-      {:guardian_db, "~> 2.0"}
+      {:guardian_db, "~> 2.0"},
+      {:httpoison, "~> 2.2"},
+      {:faker, "~> 0.18", only: :test},
+      {:ex_machina, "~> 2.8.0", only: :test}
 
     ]
   end

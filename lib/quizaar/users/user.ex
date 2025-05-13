@@ -3,6 +3,7 @@ defmodule Quizaar.Users.User do
   import Ecto.Changeset
 
   @primary_key {:id, :binary_id, autogenerate: true}
+  @optional_fields [:id, :biography, :full_name, :gender, :inserted_at, :updated_at]
   @foreign_key_type :binary_id
   schema "users" do
     field :full_name, :string
@@ -13,11 +14,14 @@ defmodule Quizaar.Users.User do
 
     timestamps(type: :utc_datetime)
   end
+  defp all_fields do
+    __MODULE__.__schema__(:fields)
+  end
 
   @doc false
   def changeset(user, attrs) do
     user
-    |> cast(attrs, [:account_id, :full_name, :gender, :biography])
-    |> validate_required([:account_id])
+    |> cast(attrs, all_fields())
+    |> validate_required(all_fields() -- @optional_fields)
   end
 end
