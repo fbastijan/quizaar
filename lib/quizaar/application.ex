@@ -7,6 +7,11 @@ defmodule Quizaar.Application do
 
   @impl true
   def start(_type, _args) do
+
+     unless Mix.env == :prod do
+      Dotenv.load
+      Mix.Task.run("loadconfig")
+    end
     children = [
       QuizaarWeb.Telemetry,
       Quizaar.Repo,
@@ -15,7 +20,8 @@ defmodule Quizaar.Application do
       # Start a worker by calling: Quizaar.Worker.start_link(arg)
       # {Quizaar.Worker, arg},
       # Start to serve requests, typically the last entry
-      QuizaarWeb.Endpoint
+      QuizaarWeb.Endpoint,
+      {Finch, name: Quizaar.Finch}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

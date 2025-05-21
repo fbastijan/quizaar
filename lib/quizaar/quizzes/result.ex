@@ -6,8 +6,8 @@ defmodule Quizaar.Quizzes.Result do
   @foreign_key_type :binary_id
   schema "results" do
     field :score, :integer
-    field :player_id, :binary_id
-    field :quiz_id, :binary_id
+
+    belongs_to :player, Quizaar.Players.Player
 
     timestamps(type: :utc_datetime)
   end

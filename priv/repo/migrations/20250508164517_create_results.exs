@@ -6,12 +6,12 @@ defmodule Quizaar.Repo.Migrations.CreateResults do
       add :id, :binary_id, primary_key: true
       add :score, :integer
       add :player_id, references(:players, on_delete: :nothing, type: :binary_id)
-      add :quiz_id, references(:quizzes, on_delete: :nothing, type: :binary_id)
+
 
       timestamps(type: :utc_datetime)
     end
 
     create index(:results, [:player_id])
-    create index(:results, [:quiz_id])
+
   end
 end

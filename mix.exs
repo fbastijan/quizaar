@@ -18,6 +18,7 @@ defmodule Quizaar.MixProject do
   # Type `mix help compile.app` for more information.
   def application do
     [
+
       mod: {Quizaar.Application, []},
       extra_applications: [:logger, :runtime_tools]
     ]
@@ -46,9 +47,10 @@ defmodule Quizaar.MixProject do
       {:bcrypt_elixir, "~> 3.0"},
       {:guardian_db, "~> 2.0"},
       {:httpoison, "~> 2.2"},
+      {:finch, "~> 0.19"},
       {:faker, "~> 0.18", only: :test},
-      {:ex_machina, "~> 2.8.0", only: :test}
-
+      {:ex_machina, "~> 2.8.0", only: :test},
+      {:dotenv, "~> 3.1.0", only: [:dev, :test]}
     ]
   end
 

@@ -7,8 +7,9 @@ defmodule Quizaar.Quizzes.Quiz do
   schema "quizzes" do
     field :description, :string
     field :title, :string
-    field :user_id, :binary_id
-
+    field :join_code, :string
+    belongs_to :user, Quizaar.Users.User
+    has_many :questions, Quizaar.Quizzes.Question
     timestamps(type: :utc_datetime)
   end
 
@@ -17,5 +18,24 @@ defmodule Quizaar.Quizzes.Quiz do
     quiz
     |> cast(attrs, [:title, :description])
     |> validate_required([:title, :description])
+    |> put_join_code()
+     |> unique_constraint(:join_code)
+  end
+
+
+   defp put_join_code(changeset) do
+    if get_field(changeset, :join_code) do
+      changeset
+    else
+      changeset
+      |> put_change(:join_code, generate_unique_code())
+    end
+  end
+
+  defp generate_unique_code do
+
+    :crypto.strong_rand_bytes(4)
+    |> Base.encode16()
+    |> binary_part(0, 6)
   end
 end

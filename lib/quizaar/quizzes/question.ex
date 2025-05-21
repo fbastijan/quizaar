@@ -8,15 +8,15 @@ defmodule Quizaar.Quizzes.Question do
     field :options, {:array, :string}
     field :text, :string
     field :answer, :string
-    field :quiz_id, :binary_id
-
+    belongs_to :quiz, Quizaar.Quizzes.Quiz
+    has_many :answers, Quizaar.Quizzes.Answer
     timestamps(type: :utc_datetime)
   end
 
   @doc false
   def changeset(question, attrs) do
     question
-    |> cast(attrs, [:text, :options, :answer])
-    |> validate_required([:text, :options, :answer])
+    |> cast(attrs, [:text, :options, :answer, :quiz_id])
+    |> validate_required([:text, :options, :answer, :quiz_id])
   end
 end

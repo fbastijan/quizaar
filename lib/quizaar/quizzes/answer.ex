@@ -7,9 +7,8 @@ defmodule Quizaar.Quizzes.Answer do
   schema "answers" do
     field :text, :string
     field :is_correct, :boolean, default: false
-    field :question_id, :binary_id
-
-    timestamps(type: :utc_datetime)
+    belongs_to :question, Quizaar.Quizzes.Question
+    belongs_to :player, Quizaar.Players.Player
   end
 
   @doc false

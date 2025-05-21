@@ -5,7 +5,8 @@ defmodule QuizaarWeb.QuizController do
   alias Quizaar.Quizzes.Quiz
 
   action_fallback QuizaarWeb.FallbackController
-
+    import QuizaarWeb.Auth.AuthorizedPlug
+    plug :is_authorized when action in [:create, :update, :delete]
   def index(conn, _params) do
     quizzes = Quizzes.list_quizzes()
     render(conn, :index, quizzes: quizzes)
@@ -15,7 +16,6 @@ defmodule QuizaarWeb.QuizController do
     with {:ok, %Quiz{} = quiz} <- Quizzes.create_quiz(quiz_params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", ~p"/api/quizzes/#{quiz}")
       |> render(:show, quiz: quiz)
     end
   end

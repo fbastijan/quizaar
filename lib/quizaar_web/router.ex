@@ -40,5 +40,6 @@ defmodule QuizaarWeb.Router do
     get "/accounts/by_id/:id", AccountController, :show
     patch "/accounts/update", AccountController, :update
     post "/accounts/refresh_session", AccountController, :refresh_session
+    post "/quizzes/create", QuizController, :create
   end
 end

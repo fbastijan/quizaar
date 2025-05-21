@@ -80,10 +80,9 @@ defmodule QuizaarWeb.AccountController do
   end
 
   def current_account(conn, %{}) do
-    Logger.debug("Current account action called")
-    Logger.debug("Conn assigns: #{inspect(conn.assigns)}")
+
     account = conn.assigns[:account]
-    Logger.debug("Current account: #{inspect(account)}")
+
     render(conn, :show_full_account, account: account)
   end
 

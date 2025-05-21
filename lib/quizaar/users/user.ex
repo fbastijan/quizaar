@@ -10,7 +10,7 @@ defmodule Quizaar.Users.User do
     field :gender, :string
     field :biography, :string
     belongs_to :account, Quizaar.Accounts.Account, type: :binary_id
-
+    has_many :quiz, Quizaar.Quizzes.Quiz
 
     timestamps(type: :utc_datetime)
   end

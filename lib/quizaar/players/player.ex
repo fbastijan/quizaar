@@ -8,7 +8,9 @@ defmodule Quizaar.Players.Player do
     field :name, :string
     field :session_id, :string
     field :user_id, :binary_id
-
+    belongs_to :quiz, Quizaar.Quizzes.Quiz
+    has_one :result, Quizaar.Quizzes.Result
+    has_many :answers, Quizaar.Quizzes.Answer
     timestamps(type: :utc_datetime)
   end
 
