@@ -323,14 +323,15 @@ def create_questions(quiz_id, config \\ %{number: 5, topic: "math", description:
   case get_quiz!(quiz_id) do
     nil -> {:error, "Quiz not found"}
     _ ->
-      questions["questionsAnswers"]
-      |> Enum.map(fn attrs ->
-        attrs = Map.put_new(attrs, "quiz_id", quiz_id)
-        IO.inspect(attrs, label: "Question Attributes")
-        %Question{}
-        |> Question.changeset(attrs)
-        |> Repo.insert()
-      end)
+      questions = questions["questionsAnswers"]
+                    |> Enum.map(fn attrs ->
+                      attrs = Map.put_new(attrs, "quiz_id", quiz_id)
+                      %Question{}
+                      |> Question.changeset(attrs)
+                      |> Repo.insert()
+                    end)
+      {:ok, questions}
+
     end
   end
 

@@ -16,7 +16,7 @@ defmodule Quizaar.Quizzes.Quiz do
   @doc false
   def changeset(quiz, attrs) do
     quiz
-    |> cast(attrs, [:title, :description])
+    |> cast(attrs, [:title, :description, :user_id])
     |> validate_required([:title, :description])
     |> put_join_code()
      |> unique_constraint(:join_code)

@@ -19,7 +19,9 @@ defmodule QuizaarWeb.QuizJSON do
     %{
       id: quiz.id,
       title: quiz.title,
-      description: quiz.description
+      description: quiz.description,
+      join_code: quiz.join_code,
+      user_id: quiz.user_id,
     }
   end
 end

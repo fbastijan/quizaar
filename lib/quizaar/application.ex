@@ -17,6 +17,7 @@ defmodule Quizaar.Application do
       Quizaar.Repo,
       {DNSCluster, query: Application.get_env(:quizaar, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Quizaar.PubSub},
+       QuizaarWeb.Presence,
       # Start a worker by calling: Quizaar.Worker.start_link(arg)
       # {Quizaar.Worker, arg},
       # Start to serve requests, typically the last entry
