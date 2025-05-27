@@ -101,4 +101,14 @@ defmodule Quizaar.Players do
   def change_player(%Player{} = player, attrs \\ %{}) do
     Player.changeset(player, attrs)
   end
+
+
+  def count_players_for_quiz(quiz_id) do
+  import Ecto.Query
+  Quizaar.Repo.aggregate(
+    from(p in Quizaar.Players.Player, where: p.quiz_id == ^quiz_id),
+    :count,
+    :id
+  )
+end
 end

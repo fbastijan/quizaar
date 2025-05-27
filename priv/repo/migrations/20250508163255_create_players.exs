@@ -11,6 +11,7 @@ defmodule Quizaar.Repo.Migrations.CreatePlayers do
       timestamps(type: :utc_datetime)
     end
 
-    create index(:players, [:user_id])
+    create unique_index(:players, [:user_id, :quiz_id], name: :players_user_id_quiz_id_index)
+
   end
 end

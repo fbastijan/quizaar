@@ -7,7 +7,7 @@ defmodule Quizaar.Players.Player do
   schema "players" do
     field :name, :string
     field :session_id, :string
-    field :user_id, :binary_id
+    belongs_to :user, Quizaar.Accounts.User
     belongs_to :quiz, Quizaar.Quizzes.Quiz
     has_one :result, Quizaar.Quizzes.Result
     has_many :answers, Quizaar.Quizzes.Answer
@@ -17,7 +17,9 @@ defmodule Quizaar.Players.Player do
   @doc false
   def changeset(player, attrs) do
     player
-    |> cast(attrs, [:session_id, :name])
-    |> validate_required([:session_id, :name])
+    |> cast(attrs, [:session_id, :name, :quiz_id, :user_id])
+    |> validate_required([:quiz_id])
+    |> unique_constraint(:session_id, name: :players_session_id_index)
+    |> unique_constraint(:user_id, name: :players_user_id_quiz_id_index)
   end
 end
