@@ -1,7 +1,7 @@
 defmodule Quizaar.Quizzes.Answer do
   use Ecto.Schema
   import Ecto.Changeset
-
+  @optional_fields [:id, :is_correct, :inserted_at, :updated_at]
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   schema "answers" do
@@ -11,10 +11,15 @@ defmodule Quizaar.Quizzes.Answer do
     belongs_to :player, Quizaar.Players.Player
   end
 
+  defp all_fields do
+    __MODULE__.__schema__(:fields)
+  end
   @doc false
   def changeset(answer, attrs) do
     answer
-    |> cast(attrs, [:text, :is_correct])
-    |> validate_required([:text, :is_correct])
+    |> cast(attrs, all_fields())
+    |> validate_required(all_fields() -- @optional_fields)
+
+
   end
 end

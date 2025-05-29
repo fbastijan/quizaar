@@ -46,118 +46,85 @@ defmodule QuizaarWeb.QuizChannel do
     count < max_players
   end
    @impl true
-  def handle_info(:after_join, socket) do
-    join_code = socket.assigns.join_code
-     quiz = Quizzes.get_quiz_by_code!(join_code)
+def handle_info(:after_join, socket) do
+  join_code = socket.assigns.join_code
+  quiz = Quizzes.get_quiz_by_code!(join_code)
 
+  cond do
+    account = socket.assigns[:account] ->
+      handle_registered_player(socket, quiz, account)
 
+    true ->
+      handle_guest_player(socket, quiz)
+  end
+end
 
-          cond do
+defp handle_registered_player(socket, quiz, account) do
+  role = if account.user.id == quiz.user_id, do: "organizer", else: "player"
+  player_params = %{
+    session_id: nil,
+    name: account.user.full_name,
+    user_id: account.user.id,
+    quiz_id: quiz.id
+  }
 
-            account = socket.assigns[:account] ->
-              # If the user is logged in, assign the account and role
-            role = if account.user.id == quiz.user_id, do: "organizer", else: "player"
+  handle_player_creation(socket, quiz, player_params, role, account.id, account.user.full_name)
+end
 
-            player_params = %{
-              session_id: nil,
-              name: account.user.full_name, # Use the user's full name
-              user_id: account.user.id,
-              quiz_id: quiz.id
-            }
-              if can_add_player?(quiz.id, 10) do
-                IO.inspect("entering player creation")
-            case Players.create_player(player_params)do
-              {:ok, player} ->
-                socket= socket
-                  |> assign(:role, role)
-                  |> assign(:quiz_id, quiz.id)
+defp handle_guest_player(socket, quiz) do
+  session_id = socket.assigns[:session_id] || Ecto.UUID.generate()
+  guest_name = socket.assigns[:name] || "Guest Player"
+  player_params = %{
+    session_id: session_id,
+    name: guest_name,
+    quiz_id: quiz.id,
+    user_id: nil
+  }
 
-                # Track the presence of the user
-                {:ok, _} =
-                  Presence.track(socket, account.id, %{
-                    online_at: inspect(System.system_time(:second)),
-                    user_name: account.user.full_name,
-                  })
+  handle_player_creation(socket, quiz, player_params, "guest_player", session_id, guest_name)
+end
 
-                push(socket, "presence_state", Presence.list(socket))
-                {:noreply, socket}
+defp handle_player_creation(socket, quiz, player_params, role, presence_key, user_name) do
+  if can_add_player?(quiz.id, 10) do
+    case Players.create_player(player_params) do
+      {:ok, player} ->
+        socket =
+          socket
+          |> assign(:role, role)
+          |> assign(:quiz_id, quiz.id)
+          |> assign(:player_id, player.id)
+          |> assign(:session_id, player_params[:session_id])
 
-              {:error, changeset} ->
-                socket= socket
-                  |> assign(:role, role)
-                  |> assign(:quiz_id, quiz.id)
-                push(socket, "info", %{message: "Already created this player rejoin!", details: inspect(changeset.errors)})
-                {:noreply, socket}
-            end
-              else
-                role = if role == "player", do: "spectator", else: role
-                socket= socket
-                  |> assign(:role, role)
-                  |> assign(:quiz_id, quiz.id)
+        {:ok, _} =
+          Presence.track(socket, presence_key, %{
+            online_at: inspect(System.system_time(:second)),
+            user_name: user_name
+          })
 
-                {:noreply, socket}
-              end
+        push(socket, "presence_state", Presence.list(socket))
+        {:noreply, socket}
 
-
-
-
-
-            true ->
-
-
-              session_id = socket.assigns[:session_id] || Ecto.UUID.generate()
-              guest_name = socket.assigns[:name] || "Guest Player"
-
-              player_params = %{
-                session_id: session_id,
-                name: guest_name,
-                quiz_id: quiz.id,
-                user_id: nil
-              }
-
-               if can_add_player?(quiz.id, 10) do
-              case Players.create_player(player_params)do
-
-                  {:ok, player} ->
-                            socket
-                        |> assign(:quiz_id, quiz.id)
-                        |> assign(:player_id, player.id)
-                        |> assign(:session_id, session_id)
-                      {:ok, _} =
-                        Presence.track(socket, session_id, %{
-                          online_at: inspect(System.system_time(:second)),
-                          user_name: guest_name
-                        })
-
-                      push(socket, "presence_state", Presence.list(socket))
-                      {:noreply, socket}
-
-
-                {:error, changeset} ->
-                  push(socket, "error", %{message: "Failed to create player", details: inspect(changeset)})
-                  {:noreply, socket}
-
-
-
-                end
-               else
-                role = "spectator"
-                socket
-                  |> assign(:role, role)
-                  |> assign(:quiz_id, quiz.id)
-                  |> assign(:session_id, session_id)
-                  |> assign(:player_id, nil)
-                push(socket, "info", %{message: "Max players reached, you are a spectator"})
-                {:noreply, socket}
-               end
-              end
+      {:error, changeset} ->
+        push(socket, "error", %{message: "Failed to create player", details: inspect(changeset)})
+        {:noreply, socket}
     end
+  else
+    socket =
+      socket
+      |> assign(:quiz_id, quiz.id)
+      |> assign(:player_id, nil)
+      |> assign(:session_id, player_params[:session_id])
+
+    push(socket, "info", %{message: "Max players reached, you are a spectator"})
+    {:noreply, socket}
+  end
+end
 
 
-
+  alias QuizaarWeb.QuestionJSON
    @impl true
   def handle_in("generate_questions", payload, socket) do
-    IO.inspect(socket)
+
     if socket.assigns.role == "organizer" do
       quiz_id = socket.assigns.quiz_id
       config = %{
@@ -166,10 +133,9 @@ defmodule QuizaarWeb.QuizChannel do
         description: payload["description"],
         difficulty: payload["difficulty"],
       }
-      IO.inspect(config)
-      IO.inspect(quiz_id)
+
       case Quizzes.create_questions(quiz_id, config)do
-       {:ok, questions} ->
+       {:ok, _questions} ->
           # Handle the successful response
           push(socket, "questions_generated", %{questions: "questions"})
           {:noreply, socket}
@@ -186,11 +152,34 @@ defmodule QuizaarWeb.QuizChannel do
 
 
   end
+
+
+  def handle_in("serve_question", _payload, socket) do
+    if socket.assigns.role == "organizer" do
+      quiz_id = socket.assigns.quiz_id
+      case Quizzes.serve_question(quiz_id) do
+        {:ok, question} ->
+          # Handle the successful response
+          broadcast!(socket, "question_served", %{question: QuestionJSON.data(question)})
+          {:noreply, socket}
+        {:error, :end, _reason} ->
+          # Handle the end of the quiz
+          broadcast!(socket, "quiz_ended", %{message: "Quiz has ended"})
+          {:noreply, socket}
+        {:error, reason} ->
+          # Handle the error response
+          push(socket, "error", %{message: reason})
+          {:noreply, socket}
+      end
+    else
+      push(socket, "error", %{message: "You are not authorized to serve questions"})
+      {:noreply, socket}
+    end
+  end
   @impl true
 
   def handle_in("delete_player", payload, socket) do
     if socket.assigns.role == "organizer" do
-      quiz_id = socket.assigns.quiz_id
       player_id = payload["player_id"]
 
       case Players.get_player!(player_id)do
@@ -209,6 +198,8 @@ defmodule QuizaarWeb.QuizChannel do
     end
 
   end
+
+
 
   # @imp true
   # def handle_in("add_player", payload, socket) do

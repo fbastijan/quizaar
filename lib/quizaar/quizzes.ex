@@ -4,6 +4,7 @@ defmodule Quizaar.Quizzes do
   """
 
   import Ecto.Query, warn: false
+  alias Ecto.Multi
   alias Quizaar.Repo
 
   alias Quizaar.Quizzes.Quiz
@@ -284,7 +285,7 @@ defmodule Quizaar.Quizzes do
                       |> String.replace(~r/%{topic}/, topic)
                       |> String.replace(~r/%{context}/, context)
                       |> String.replace(~r/%{difficulty}/, difficulty)
-    {ok,res} =query_llm(updated_prompt)
+    {:ok,res} =query_llm(updated_prompt)
     case res["choices"] do
       [%{"message" => %{"content" => content}} | _] ->
         Jason.decode(content)
@@ -384,6 +385,34 @@ def create_questions(quiz_id, config \\ %{number: 5, topic: "math", description:
     Question.changeset(question, attrs)
   end
 
+ def handle_question(%Quiz{} = quiz, %Question{} = question, time_limit) do
+  Multi.new()
+  |> Multi.update(:quiz, Quiz.changeset(quiz, %{
+      current_question_id: question.id,
+      question_started_at: DateTime.utc_now(),
+      question_time_limit: time_limit
+    }))
+  |> Multi.update(:question, Question.changeset(question, %{used: true}))
+  |> Repo.transaction()
+end
+  def serve_question(%Quiz{} = quiz, time_limit \\ 60) do
+
+    question = Repo.one(from q in Question, where: q.quiz_id == ^quiz.id and not q.used, limit: 1)
+    if question do
+       case handle_question(quiz, question, time_limit) do
+        {:ok, examp} ->
+          IO.inspect(examp, label: "Transaction Result")
+          # Successfully updated the quiz and question
+          {:ok, question}
+        {:error, _} ->
+          # Handle error case
+          {:error, "Failed to update quiz or question"}
+       end
+
+    else
+      {:error, :end, "No available questions"}
+    end
+  end
   alias Quizaar.Quizzes.Answer
 
   @doc """
