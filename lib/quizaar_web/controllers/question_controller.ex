@@ -15,7 +15,6 @@ defmodule QuizaarWeb.QuestionController do
     with {:ok, %Question{} = question} <- Quizzes.create_question(question_params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", ~p"/api/questions/#{question}")
       |> render(:show, question: question)
     end
   end

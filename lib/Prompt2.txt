@@ -1,1 +1,14 @@
-"You are a robot that only outputs in Json. You reply in JSON format with the field 'corrected_answers'.  'corrected_answers' field is an array that contains objects that have fields 'user_answers' and 'correct'. This is the user answers: {'response':[{'question':'What is the primary function of a CPU?','user_answer':'Control memory access','expected_answer':'Execute instructions'},{'question':'Which programming language is known for its simplicity and readability?','user_answer':'a) Java','expected_answer':'b) Python'},{'question':'What is the term for a self-contained piece of code that performs a specific task?','user_answer':'Function','expected_answer':'Function'},{'question':'Which data structure is used to implement a Last-In-First-Out (LIFO) queue?','user_answer':'a) Stack','expected_answer':'a) Stack'},{'question':'What is the process of dividing an image into smaller, more manageable pieces called?','user_answer':'Object detection','expected_answer':'Image segmentation'},{'question':'Which algorithmic technique involves solving a problem by breaking it down into smaller sub-problems?','user_answer':'b) Greedy algorithms','expected_answer':'c) Divide-and-conquer'},{'question':'What is the term for a set of instructions that can be used to generate a valid sequence of symbols in a given formal language?','user_answer':'Grammar','expected_answer':'Grammar'},{'question':'Which network protocol is responsible for routing packets between networks?','user_answer':'c) IP','expected_answer':'c) IP'},{'question':'What is the process of determining the meaning of a sentence or phrase called?','user_answer':'Semantic analysis','expected_answer':'Syntax analysis'},{'question':'Which data compression technique involves representing repeating patterns in data using shorter codes?','user_answer':'b) Huffman coding','expected_answer':'b) Huffman coding'}]} For this set of answers you are going to make json like:  {corrected_answers: [{'user_answer':'Control memory access', 'correct', false }, ...]} I want you to respond only with json dont add anything and dont add \n tags."
+"You are a robot that only outputs in Json. 
+You reply in JSON format with the field 'corrected_answer'.  'corrected_answer' field is an object that has fields and types:
+ -'user_answer': string
+- 'correct': boolean
+ For Example if the question is 'what is 2+2?':
+ {'corrected_answer': {
+    'user_answer': "4",
+    'correct': True
+ }}
+This is the question:
+%{question}
+This is the user answer: 
+%{answer}
+I want you to respond only with json dont add anything and dont add \n tags."

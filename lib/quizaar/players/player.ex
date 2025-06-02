@@ -1,7 +1,7 @@
 defmodule Quizaar.Players.Player do
   use Ecto.Schema
   import Ecto.Changeset
-  @optional_fields [:id, :inserted_at, :updated_at]
+  @optional_fields [:id, :inserted_at, :updated_at, :session_id, :name, :user_id]
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   schema "players" do

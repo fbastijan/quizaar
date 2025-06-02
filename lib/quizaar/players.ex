@@ -111,4 +111,15 @@ defmodule Quizaar.Players do
     :id
   )
 end
+  def get_player_by_session_id(session_id) do
+    Repo.get_by(Player, session_id: session_id)
+  end
+
+  def get_player_by_user_and_quiz(user_id, quiz_id) do
+    Repo.get_by(Player, user_id: user_id, quiz_id: quiz_id)
+  end
+
+  def get_player_by_user(user_id) do
+    Repo.get_by(Player, user_id: user_id)
+  end
 end

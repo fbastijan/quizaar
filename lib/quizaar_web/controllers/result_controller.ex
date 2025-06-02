@@ -15,7 +15,6 @@ defmodule QuizaarWeb.ResultController do
     with {:ok, %Result{} = result} <- Quizzes.create_result(result_params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", ~p"/api/results/#{result}")
       |> render(:show, result: result)
     end
   end

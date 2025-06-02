@@ -462,6 +462,7 @@ end
     |> Repo.insert()
   end
 
+
   @doc """
   Updates a answer.
 
@@ -555,7 +556,8 @@ end
   def create_result(attrs \\ %{}) do
     %Result{}
     |> Result.changeset(attrs)
-    |> Repo.insert()
+    |> Repo.insert(
+)
   end
 
   @doc """
@@ -604,4 +606,70 @@ end
   def change_result(%Result{} = result, attrs \\ %{}) do
     Result.changeset(result, attrs)
   end
+
+  def check_if_answered( player_id, question_id) do
+    query =
+      from a in Answer,
+        where: a.player_id == ^player_id and a.question_id == ^question_id,
+        select: count(a.id)
+
+    case Repo.one(query) do
+      0 -> false
+      _ -> true
+    end
+  end
+ def calculate_score(question_started_at, answer_time, allowed_time) do
+  time_taken = DateTime.diff(answer_time, question_started_at)
+  base_score = 200
+
+  min_score = 50
+
+  time_taken = min(time_taken, allowed_time)
+
+  score =
+    base_score - round((base_score - min_score) * (time_taken / allowed_time))
+
+  max(score, min_score)
+end
+def verify_choice(%Question{} = question, %Quiz{} = quiz, player_id, user_answer) do
+  a_attrs = %{
+    text: user_answer,
+    question_id: question.id,
+    player_id: player_id
+  }
+
+  is_correct = user_answer == question.answer
+
+  # Calculate score only if correct
+  score =
+    if is_correct do
+      calculate_score(
+        quiz.question_started_at,
+        DateTime.utc_now(),
+        quiz.question_time_limit
+      )
+    else
+      0
+    end
+
+  Multi.new()
+  |> Multi.insert(:answer, Answer.changeset(%Answer{}, Map.put(a_attrs, :is_correct, is_correct)))
+  |> Multi.insert(:result,
+      Result.changeset(
+        %Result{},
+        %{score: score,  player_id: player_id}
+      ),
+      on_conflict: [inc: [score: score]],
+      conflict_target: [ :player_id]
+    )
+  |> Repo.transaction()
+end
+
+def corrected_by_llm(question, user_answer) do
+  {:ok, prompt} = read_prompt("lib/Prompt2.txt")
+  updated_prompt = String.replace(prompt, ~r/%{question}/, question)
+                      |> String.replace(~r/%{answer}/, user_answer)
+
+  query_llm(updated_prompt)
+end
 end

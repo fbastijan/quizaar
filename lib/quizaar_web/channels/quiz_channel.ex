@@ -5,41 +5,57 @@ defmodule QuizaarWeb.QuizChannel do
   alias Quizaar.Quizzes
   alias Quizaar.Players
   alias QuizaarWeb.Presence
+
+  alias QuizaarWeb.QuestionJSON
   @impl true
 
 
   def join("quiz:" <> join_code, params, socket) do
-     socket = assign(socket, :join_code, join_code)
-    send(self(), :after_join)
-   case Map.get(params, "token") do
+    quiz= Quizzes.get_quiz_by_code!(join_code)
+
+    socket=  socket
+     |> assign(:join_code, join_code)
+     |> assign(:quiz, quiz)
+
+  socket =  case Map.get(params, "token") do
     nil ->
       # Guest: assign a session_id and guest role
      session_id = case Map.get(params, "session_id") do
       nil -> Ecto.UUID.generate()
       session_id -> session_id
      end
-
-      socket =
+      player = Players.get_player_by_session_id(session_id)
         socket
         |> assign(:guest, true)
         |> assign(:session_id, session_id)
-        |> assign(:role, "guest_player")
+        |> assign(:role, "player")
         |> assign(:name, Map.get(params, "name"))
-      {:ok, socket}
+        |> assign(:player, player)
+
 
     token ->
       case authorized(token, socket) do
         {:ok, socket} ->
-          {:ok, socket}
-        {:error, _reason} ->
-          {:error, %{reason: "unauthorized"}}
+           role = if socket.assigns.account.user.id == quiz.user_id, do: "organizer"
+
+          player = Players.get_player_by_user(socket.assigns.account.user.id)
+          IO.inspect(quiz.id, label: "Quiz ID")
+            IO.inspect(socket.assigns.account.user.id, label: "User ID")
+            socket
+            |> assign(:role, role)
+            |> assign(:player, player)
+            |> assign(:quiz_id, quiz.id)
+
+        {:error, reason} ->
+          IO.inspect("Unauthorized access attempt with token: #{reason}")
+          socket
       end
   end
+  send(self(), :after_join)
+  IO.inspect(socket.assigns)
+  {:ok, socket}
   end
- @impl true
-  def join("quiz:" <> _join_code, _params, _socket) do
-    {:error, %{reason: "unauthorized"}}
-  end
+
 
     def can_add_player?(quiz_id, max_players \\ 10) do
     count = Players.count_players_for_quiz(quiz_id)
@@ -48,8 +64,14 @@ defmodule QuizaarWeb.QuizChannel do
    @impl true
 def handle_info(:after_join, socket) do
   join_code = socket.assigns.join_code
-  quiz = Quizzes.get_quiz_by_code!(join_code)
+  quiz = socket.assigns.quiz
+ socket = case Quizzes.get_question!(quiz.current_question_id) do
+     nil -> socket
+     question -> assign(socket, :current_question, question)
 
+  end
+
+  IO.inspect(socket.assigns, label: "Socket Assigns After Join")
   cond do
     account = socket.assigns[:account] ->
       handle_registered_player(socket, quiz, account)
@@ -60,15 +82,14 @@ def handle_info(:after_join, socket) do
 end
 
 defp handle_registered_player(socket, quiz, account) do
-  role = if account.user.id == quiz.user_id, do: "organizer", else: "player"
   player_params = %{
     session_id: nil,
     name: account.user.full_name,
     user_id: account.user.id,
     quiz_id: quiz.id
   }
-
-  handle_player_creation(socket, quiz, player_params, role, account.id, account.user.full_name)
+  IO.inspect(player_params, label: "Player Params")
+  handle_player_creation(socket, quiz, player_params, account.id, account.user.full_name)
 end
 
 defp handle_guest_player(socket, quiz) do
@@ -81,47 +102,36 @@ defp handle_guest_player(socket, quiz) do
     user_id: nil
   }
 
-  handle_player_creation(socket, quiz, player_params, "guest_player", session_id, guest_name)
+  handle_player_creation(socket, quiz, player_params,  session_id, guest_name)
 end
 
-defp handle_player_creation(socket, quiz, player_params, role, presence_key, user_name) do
+defp handle_player_creation(socket, quiz, player_params, presence_key, user_name) do
   if can_add_player?(quiz.id, 10) do
     case Players.create_player(player_params) do
       {:ok, player} ->
-        socket =
-          socket
-          |> assign(:role, role)
-          |> assign(:quiz_id, quiz.id)
-          |> assign(:player_id, player.id)
-          |> assign(:session_id, player_params[:session_id])
 
         {:ok, _} =
           Presence.track(socket, presence_key, %{
             online_at: inspect(System.system_time(:second)),
             user_name: user_name
           })
-
+        socket = assign(socket, :player, player)
         push(socket, "presence_state", Presence.list(socket))
         {:noreply, socket}
 
       {:error, changeset} ->
         push(socket, "error", %{message: "Failed to create player", details: inspect(changeset)})
+
         {:noreply, socket}
     end
   else
-    socket =
-      socket
-      |> assign(:quiz_id, quiz.id)
-      |> assign(:player_id, nil)
-      |> assign(:session_id, player_params[:session_id])
-
+    socket = assign(socket, :role, "spectator")
     push(socket, "info", %{message: "Max players reached, you are a spectator"})
     {:noreply, socket}
   end
 end
 
 
-  alias QuizaarWeb.QuestionJSON
    @impl true
   def handle_in("generate_questions", payload, socket) do
 
@@ -154,13 +164,47 @@ end
   end
 
 
+  def handle_in("answer_question", payload, socket) do
+ answered = Quizzes.check_if_answered(socket.assigns.player.id, socket.assigns.current_question.id)
+    if socket.assigns.player != nil and !answered do
+
+      question= socket.assigns.current_question
+      player = socket.assigns.player
+      quiz = socket.assigns.quiz
+      answer = payload["answer"]
+
+
+
+     case Quizzes.verify_choice(question, quiz, player.id, answer) do
+        {:ok, %{ result: result, answer: answer}} ->
+          # Handle the successful response
+          push(socket, "answer_result", %{result: result.id, answer: answer.id})
+          {:noreply, socket}
+        _->
+
+          # Handle the error response
+          push(socket, "error", %{message: "Error verifying answer"})
+          {:noreply, socket}
+
+
+     end
+    else
+       push(socket, "error", %{message: "already answered"})
+        {:noreply, socket}
+
+
+      end
+  end
+
+
   def handle_in("serve_question", _payload, socket) do
     if socket.assigns.role == "organizer" do
-      quiz_id = socket.assigns.quiz_id
-      case Quizzes.serve_question(quiz_id) do
+
+      case Quizzes.serve_question(socket.assigns.quiz) do
         {:ok, question} ->
           # Handle the successful response
-          broadcast!(socket, "question_served", %{question: QuestionJSON.data(question)})
+          socket = assign(socket, :current_question, question)
+          broadcast!(socket, "question_served", %{question: QuestionJSON.show(%{question: question})})
           {:noreply, socket}
         {:error, :end, _reason} ->
           # Handle the end of the quiz
@@ -183,14 +227,15 @@ end
       player_id = payload["player_id"]
 
       case Players.get_player!(player_id)do
+    nil ->
+          # Handle the error response
+          push(socket, "error", %{message: "Player not found"})
+          {:noreply, socket}
      player ->
           Players.delete_player(player)
           push(socket, "player_deleted", %{message: "Player deleted successfully"})
           {:noreply, socket}
-        nil ->
-          # Handle the error response
-          push(socket, "error", %{message: "Player not found"})
-          {:noreply, socket}
+
       end
     else
       push(socket, "error", %{message: "You are not authorized to delete players"})

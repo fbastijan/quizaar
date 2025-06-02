@@ -9,6 +9,7 @@ defmodule Quizaar.Quizzes.Answer do
     field :is_correct, :boolean, default: false
     belongs_to :question, Quizaar.Quizzes.Question
     belongs_to :player, Quizaar.Players.Player
+     timestamps(type: :utc_datetime)
   end
 
   defp all_fields do
