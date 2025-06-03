@@ -19,5 +19,4 @@ defmodule Quizaar.Support.Factory do
       account: build(:account)
     }
   end
-
 end

@@ -15,7 +15,6 @@ defmodule QuizaarWeb.AnswerController do
     with {:ok, %Answer{} = answer} <- Quizzes.create_answer(answer_params) do
       conn
       |> put_status(:created)
-
       |> render(:show, answer: answer)
     end
   end

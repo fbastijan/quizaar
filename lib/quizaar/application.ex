@@ -7,17 +7,17 @@ defmodule Quizaar.Application do
 
   @impl true
   def start(_type, _args) do
-
-     unless Mix.env == :prod do
-      Dotenv.load
+    unless Mix.env() == :prod do
+      Dotenv.load()
       Mix.Task.run("loadconfig")
     end
+
     children = [
       QuizaarWeb.Telemetry,
       Quizaar.Repo,
       {DNSCluster, query: Application.get_env(:quizaar, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Quizaar.PubSub},
-       QuizaarWeb.Presence,
+      QuizaarWeb.Presence,
       # Start a worker by calling: Quizaar.Worker.start_link(arg)
       # {Quizaar.Worker, arg},
       # Start to serve requests, typically the last entry

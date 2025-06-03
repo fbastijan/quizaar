@@ -37,6 +37,7 @@ defmodule Quizaar.Quizzes do
 
   """
   def get_quiz!(id), do: Repo.get!(Quiz, id)
+
   @doc """
   Gets a single quiz by its code.
   Raises `Ecto.NoResultsError` if the Quiz does not exist.
@@ -50,10 +51,6 @@ defmodule Quizaar.Quizzes do
 
   """
   def get_quiz_by_code!(join_code), do: Repo.get_by!(Quiz, join_code: join_code)
-
-
-
-
 
   @doc """
   Creates a quiz.
@@ -169,97 +166,102 @@ defmodule Quizaar.Quizzes do
     |> Repo.insert()
   end
 
-@api_url "https://api.groq.com/openai/v1/chat/completions"
-    # Ensure the API key is set in your environment variables
-    @doc """
-    Sends a prompt, using POST, to a large language model (LLM) and returns the generated response.
+  @api_url "https://api.groq.com/openai/v1/chat/completions"
+  # Ensure the API key is set in your environment variables
+  @doc """
+  Sends a prompt, using POST, to a large language model (LLM) and returns the generated response.
 
-    ## Parameters
+  ## Parameters
 
-      - `prompt` (String): The input text or question to be sent to the LLM.
-      - `opts` (Keyword list, optional): Additional options for the query, such as model parameters or configuration.
+    - `prompt` (String): The input text or question to be sent to the LLM.
+    - `opts` (Keyword list, optional): Additional options for the query, such as model parameters or configuration.
 
-    ## Returns
+  ## Returns
 
-      - `{:ok, response}` on success, where `response` is the LLM's generated output.
-      - `{:error, reason}` on failure.
+    - `{:ok, response}` on success, where `response` is the LLM's generated output.
+    - `{:error, reason}` on failure.
 
-    ## Examples
+  ## Examples
 
-        iex> query_llm("What is Elixir?")
-        {:ok, "Elixir is a dynamic, functional language designed for building scalable and maintainable applications."}
-    """
-    def query_llm(prompt) do
-      headers = [
-        {"Content-Type", "application/json"},
-        {"Authorization", "Bearer #{System.get_env("GROQ_API_KEY")}"}, # Ensure the API key is set in your environment variables
-        {"Accept", "application/json"}
-      ]
+      iex> query_llm("What is Elixir?")
+      {:ok, "Elixir is a dynamic, functional language designed for building scalable and maintainable applications."}
+  """
+  def query_llm(prompt) do
+    headers = [
+      {"Content-Type", "application/json"},
+      # Ensure the API key is set in your environment variables
+      {"Authorization", "Bearer #{System.get_env("GROQ_API_KEY")}"},
+      {"Accept", "application/json"}
+    ]
 
-      body = %{
+    body =
+      %{
         "model" => "meta-llama/llama-4-maverick-17b-128e-instruct",
         "response_format" => %{type: "json_object"},
-          "temperature"=> 0.6,
+        "temperature" => 0.6,
         "messages" => [
           %{
             "role" => "user",
             "content" => prompt
-
           }
         ]
       }
       |> Jason.encode!()
 
-      request = Finch.build(:post, @api_url, headers, body)
+    request = Finch.build(:post, @api_url, headers, body)
 
-      case Finch.request(request, Quizaar.Finch) do
-        {:ok, %Finch.Response{status: 200, body: response_body}} ->
-          IO.inspect(response_body, label: "Raw Response Body")
-          case Jason.decode(response_body) do
-            {:ok, decoded_body} -> {:ok, decoded_body}
-            {:error, decode_error} -> {:error, {:decode_error, decode_error}}
-          end
+    case Finch.request(request, Quizaar.Finch) do
+      {:ok, %Finch.Response{status: 200, body: response_body}} ->
+        IO.inspect(response_body, label: "Raw Response Body")
 
-        {:ok, %Finch.Response{status: status_code, body: error_body}} ->
-          IO.inspect(error_body, label: "Error Response Body")
-          {:error, {:http_error, status_code, error_body}}
+        case Jason.decode(response_body) do
+          {:ok, decoded_body} -> {:ok, decoded_body}
+          {:error, decode_error} -> {:error, {:decode_error, decode_error}}
+        end
 
-        {:error, reason} ->
-          IO.inspect(reason, label: "Request Error")
-          {:error, {:request_error, reason}}
-      end
+      {:ok, %Finch.Response{status: status_code, body: error_body}} ->
+        IO.inspect(error_body, label: "Error Response Body")
+        {:error, {:http_error, status_code, error_body}}
+
+      {:error, reason} ->
+        IO.inspect(reason, label: "Request Error")
+        {:error, {:request_error, reason}}
     end
-    @doc """
-      Reads a prompt from a file and returns the user's input.
-      This function reads a prompt from a specified file and parses it into string format.
+  end
+
+  @doc """
+    Reads a prompt from a file and returns the user's input.
+    This function reads a prompt from a specified file and parses it into string format.
 
 
-    ## Examples
+  ## Examples
 
-      iex> read_prompt("Lib/Prompt1.txt")
-      {:ok, "Alice"}
-      iex> read_prompt("Lib/Prompt2.txt")
-      {:ok, "Bob"}
-      "Alice"
+    iex> read_prompt("Lib/Prompt1.txt")
+    {:ok, "Alice"}
+    iex> read_prompt("Lib/Prompt2.txt")
+    {:ok, "Bob"}
+    "Alice"
 
-    ## Parameters
+  ## Parameters
 
-      - `prompt`: A string to display as the prompt message.
+    - `prompt`: A string to display as the prompt message.
 
-    ## Returns
+  ## Returns
 
-      - `{:ok, content}` on success, where `content` is the parsed prompt.
-      - `{:error, reason}` on failure.
-    """
+    - `{:ok, content}` on success, where `content` is the parsed prompt.
+    - `{:error, reason}` on failure.
+  """
   def read_prompt(file_path) do
     case File.read(file_path) do
       {:ok, content} ->
-        {:ok, String.trim(content)} # Trim any extra whitespace
+        # Trim any extra whitespace
+        {:ok, String.trim(content)}
 
       {:error, reason} ->
         {:error, reason}
     end
   end
+
   @doc """
   Generates questions based on the provided parameters.
   ## Parameters
@@ -278,14 +280,17 @@ defmodule Quizaar.Quizzes do
       iex> generate_questions(3, "science", "none", "easy")
       {:ok, %{"questionsAnswers" => [%{"question" => "What is H2O?", "answer" => "Water"}]}}
   """
-  def generate_questions(number, topic, context\\ "none", difficulty\\ "normal") do
-   {:ok, prompt} = read_prompt("lib/Prompt1.txt")
+  def generate_questions(number, topic, context \\ "none", difficulty \\ "normal") do
+    {:ok, prompt} = read_prompt("lib/Prompt1.txt")
 
-  updated_prompt = String.replace(prompt, ~r/%{number_of_questions}/, Integer.to_string(number))
-                      |> String.replace(~r/%{topic}/, topic)
-                      |> String.replace(~r/%{context}/, context)
-                      |> String.replace(~r/%{difficulty}/, difficulty)
-    {:ok,res} =query_llm(updated_prompt)
+    updated_prompt =
+      String.replace(prompt, ~r/%{number_of_questions}/, Integer.to_string(number))
+      |> String.replace(~r/%{topic}/, topic)
+      |> String.replace(~r/%{context}/, context)
+      |> String.replace(~r/%{difficulty}/, difficulty)
+
+    {:ok, res} = query_llm(updated_prompt)
+
     case res["choices"] do
       [%{"message" => %{"content" => content}} | _] ->
         Jason.decode(content)
@@ -293,7 +298,6 @@ defmodule Quizaar.Quizzes do
       _ ->
         {:error, "Unexpected response format"}
     end
-
   end
 
   @doc """
@@ -318,25 +322,31 @@ defmodule Quizaar.Quizzes do
       [%Question{...}, %Question{...}, %Question{...}]
 
   """
-def create_questions(quiz_id, config \\ %{number: 5, topic: "math", description: "none", difficulty: "normal"}) do
-  %{number: number, topic: topic, description: description, difficulty: difficulty} = config
-  {:ok, questions} = generate_questions(number, topic, description, difficulty)
-  case get_quiz!(quiz_id) do
-    nil -> {:error, "Quiz not found"}
-    _ ->
-      questions = questions["questionsAnswers"]
-                    |> Enum.map(fn attrs ->
-                      attrs = Map.put_new(attrs, "quiz_id", quiz_id)
-                      %Question{}
-                      |> Question.changeset(attrs)
-                      |> Repo.insert()
-                    end)
-      {:ok, questions}
+  def create_questions(
+        quiz_id,
+        config \\ %{number: 5, topic: "math", description: "none", difficulty: "normal"}
+      ) do
+    %{number: number, topic: topic, description: description, difficulty: difficulty} = config
+    {:ok, questions} = generate_questions(number, topic, description, difficulty)
 
+    case get_quiz!(quiz_id) do
+      nil ->
+        {:error, "Quiz not found"}
+
+      _ ->
+        questions =
+          questions["questionsAnswers"]
+          |> Enum.map(fn attrs ->
+            attrs = Map.put_new(attrs, "quiz_id", quiz_id)
+
+            %Question{}
+            |> Question.changeset(attrs)
+            |> Repo.insert()
+          end)
+
+        {:ok, questions}
     end
   end
-
-
 
   @doc """
   Updates a question.
@@ -385,34 +395,39 @@ def create_questions(quiz_id, config \\ %{number: 5, topic: "math", description:
     Question.changeset(question, attrs)
   end
 
- def handle_question(%Quiz{} = quiz, %Question{} = question, time_limit) do
-  Multi.new()
-  |> Multi.update(:quiz, Quiz.changeset(quiz, %{
-      current_question_id: question.id,
-      question_started_at: DateTime.utc_now(),
-      question_time_limit: time_limit
-    }))
-  |> Multi.update(:question, Question.changeset(question, %{used: true}))
-  |> Repo.transaction()
-end
-  def serve_question(%Quiz{} = quiz, time_limit \\ 60) do
+  def handle_question(%Quiz{} = quiz, %Question{} = question, time_limit) do
+    Multi.new()
+    |> Multi.update(
+      :quiz,
+      Quiz.changeset(quiz, %{
+        current_question_id: question.id,
+        question_started_at: DateTime.utc_now(),
+        question_time_limit: time_limit
+      })
+    )
+    |> Multi.update(:question, Question.changeset(question, %{used: true}))
+    |> Repo.transaction()
+  end
 
+  def serve_question(%Quiz{} = quiz, time_limit \\ 60) do
     question = Repo.one(from q in Question, where: q.quiz_id == ^quiz.id and not q.used, limit: 1)
+
     if question do
-       case handle_question(quiz, question, time_limit) do
+      case handle_question(quiz, question, time_limit) do
         {:ok, examp} ->
           IO.inspect(examp, label: "Transaction Result")
           # Successfully updated the quiz and question
           {:ok, question}
+
         {:error, _} ->
           # Handle error case
           {:error, "Failed to update quiz or question"}
-       end
-
+      end
     else
       {:error, :end, "No available questions"}
     end
   end
+
   alias Quizaar.Quizzes.Answer
 
   @doc """
@@ -461,7 +476,6 @@ end
     |> Answer.changeset(attrs)
     |> Repo.insert()
   end
-
 
   @doc """
   Updates a answer.
@@ -556,8 +570,7 @@ end
   def create_result(attrs \\ %{}) do
     %Result{}
     |> Result.changeset(attrs)
-    |> Repo.insert(
-)
+    |> Repo.insert()
   end
 
   @doc """
@@ -607,7 +620,7 @@ end
     Result.changeset(result, attrs)
   end
 
-  def check_if_answered( player_id, question_id) do
+  def check_if_answered(player_id, question_id) do
     query =
       from a in Answer,
         where: a.player_id == ^player_id and a.question_id == ^question_id,
@@ -618,58 +631,122 @@ end
       _ -> true
     end
   end
- def calculate_score(question_started_at, answer_time, allowed_time) do
-  time_taken = DateTime.diff(answer_time, question_started_at)
-  base_score = 200
 
-  min_score = 50
+  defp calculate_score(question_started_at, answer_time, allowed_time) do
+    time_taken = DateTime.diff(answer_time, question_started_at)
+    base_score = 200
 
-  time_taken = min(time_taken, allowed_time)
+    min_score = 50
 
-  score =
-    base_score - round((base_score - min_score) * (time_taken / allowed_time))
+    time_taken = min(time_taken, allowed_time)
 
-  max(score, min_score)
-end
-def verify_choice(%Question{} = question, %Quiz{} = quiz, player_id, user_answer) do
-  a_attrs = %{
-    text: user_answer,
-    question_id: question.id,
-    player_id: player_id
-  }
+    score =
+      base_score - round((base_score - min_score) * (time_taken / allowed_time))
 
-  is_correct = user_answer == question.answer
+    max(score, min_score)
+  end
 
-  # Calculate score only if correct
-  score =
-    if is_correct do
-      calculate_score(
-        quiz.question_started_at,
-        DateTime.utc_now(),
-        quiz.question_time_limit
-      )
-    else
-      0
+  defp normalize_answer(answer) do
+    answer
+    |> String.downcase()
+    |> String.replace(~r/\s+/, "")
+  end
+
+  defp corrected_by_llm(question, user_answer) do
+    {:ok, prompt} = read_prompt("lib/Prompt2.txt")
+
+    updated_prompt =
+      String.replace(prompt, ~r/%{question}/, question)
+      |> String.replace(~r/%{answer}/, user_answer)
+
+    {:ok, res} = query_llm(updated_prompt)
+
+    case res["choices"] do
+      [%{"message" => %{"content" => content}} | _] ->
+        JSON.decode(content)
+
+      _ ->
+        {:error, "Unexpected response format"}
     end
+  end
 
-  Multi.new()
-  |> Multi.insert(:answer, Answer.changeset(%Answer{}, Map.put(a_attrs, :is_correct, is_correct)))
-  |> Multi.insert(:result,
+
+  defp check_if_correct(%Question{} = question, user_answer) do
+  cond do
+    # Exact match (normalized)
+    normalize_answer(user_answer) == normalize_answer(question.answer) ->
+      true
+
+    # If options exist and answer is not correct, it's simply wrong
+    not Enum.empty?(question.options) ->
+      false
+
+    # Otherwise, fallback to LLM correction
+    true ->
+      {:ok, res} = corrected_by_llm(question.text, user_answer)
+     correct_struct = res["corrected_answer"]
+     correct_struct["correct"]
+  end
+end
+
+
+
+  @doc """
+  Verifies the user's choice for a question and updates the answer and result accordingly.
+
+  ## Parameters
+
+    - `question`: The question being answered.
+    - `quiz`: The quiz context.
+    - `player_id`: The ID of the player answering the question.
+    - `user_answer`: The answer provided by the user.
+
+  ## Returns
+
+    - A tuple with the result of the transaction, including the inserted answer and updated result.
+
+  ## Examples
+
+      iex> verify_choice(question, quiz, player_id, "User's answer")
+      {:ok, %Answer{}, %Result{}}
+  """
+  def verify_choice(%Question{} = question, %Quiz{} = quiz, player_id, user_answer) do
+    a_attrs = %{
+      text: user_answer,
+      question_id: question.id,
+      player_id: player_id
+    }
+
+    is_correct = check_if_correct(question, user_answer)
+
+    # Calculate score only if correct
+    score =
+      if is_correct do
+        calculate_score(
+          quiz.question_started_at,
+          DateTime.utc_now(),
+          quiz.question_time_limit
+        )
+      else
+        0
+      end
+
+    Multi.new()
+    |> Multi.insert(
+      :answer,
+      Answer.changeset(%Answer{}, Map.put(a_attrs, :is_correct, is_correct))
+    )
+    |> Multi.insert(
+      :result,
       Result.changeset(
         %Result{},
-        %{score: score,  player_id: player_id}
+        %{score: score, player_id: player_id}
       ),
       on_conflict: [inc: [score: score]],
-      conflict_target: [ :player_id]
+      conflict_target: [:player_id]
     )
-  |> Repo.transaction()
-end
+    |> Repo.transaction()
+  end
 
-def corrected_by_llm(question, user_answer) do
-  {:ok, prompt} = read_prompt("lib/Prompt2.txt")
-  updated_prompt = String.replace(prompt, ~r/%{question}/, question)
-                      |> String.replace(~r/%{answer}/, user_answer)
 
-  query_llm(updated_prompt)
-end
 end

@@ -9,13 +9,15 @@ defmodule Quizaar.Quizzes.Result do
     belongs_to :player, Quizaar.Players.Player
     timestamps(type: :utc_datetime)
   end
- def all_fields do
+
+  def all_fields do
     __MODULE__.__schema__(:fields)
   end
+
   @doc false
- def changeset(result, attrs) do
-  result
-  |> cast(attrs, all_fields())
-  |> validate_required(all_fields() -- @optional_fields)
-end
+  def changeset(result, attrs) do
+    result
+    |> cast(attrs, all_fields())
+    |> validate_required(all_fields() -- @optional_fields)
+  end
 end

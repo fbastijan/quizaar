@@ -1,7 +1,4 @@
 defmodule Quizaar.Accounts.Account do
-
-
-
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -16,11 +13,9 @@ defmodule Quizaar.Accounts.Account do
     timestamps(type: :utc_datetime)
   end
 
-
   defp all_fields do
     __MODULE__.__schema__(:fields)
   end
-
 
   def changeset(account, attrs) do
     account
@@ -31,7 +26,6 @@ defmodule Quizaar.Accounts.Account do
     |> unique_constraint(:email)
     |> put_password_hash()
   end
-
 
   defp put_password_hash(
          %Ecto.Changeset{valid?: true, changes: %{hash_password: hash_password}} = changeset

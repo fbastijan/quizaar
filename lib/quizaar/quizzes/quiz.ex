@@ -1,7 +1,16 @@
 defmodule Quizaar.Quizzes.Quiz do
   use Ecto.Schema
   import Ecto.Changeset
-  @optional_fields [:id, :inserted_at, :updated_at, :current_question_id, :question_started_at, :question_time_limit, :join_code]
+
+  @optional_fields [
+    :id,
+    :inserted_at,
+    :updated_at,
+    :current_question_id,
+    :question_started_at,
+    :question_time_limit,
+    :join_code
+  ]
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   schema "quizzes" do
@@ -11,14 +20,19 @@ defmodule Quizaar.Quizzes.Quiz do
     belongs_to :user, Quizaar.Users.User
     has_many :questions, Quizaar.Quizzes.Question
 
-    belongs_to :current_question, Quizaar.Quizzes.Question, foreign_key: :current_question_id, type: :binary_id
+    belongs_to :current_question, Quizaar.Quizzes.Question,
+      foreign_key: :current_question_id,
+      type: :binary_id
+
     field :question_started_at, :utc_datetime
     field :question_time_limit, :integer
     timestamps(type: :utc_datetime)
   end
+
   def all_fields do
     __MODULE__.__schema__(:fields)
   end
+
   @doc false
   def changeset(quiz, attrs) do
     quiz
@@ -28,8 +42,7 @@ defmodule Quizaar.Quizzes.Quiz do
     |> unique_constraint(:join_code)
   end
 
-
-   defp put_join_code(changeset) do
+  defp put_join_code(changeset) do
     if get_field(changeset, :join_code) do
       changeset
     else
@@ -39,7 +52,6 @@ defmodule Quizaar.Quizzes.Quiz do
   end
 
   defp generate_unique_code do
-
     :crypto.strong_rand_bytes(4)
     |> Base.encode16()
     |> binary_part(0, 6)

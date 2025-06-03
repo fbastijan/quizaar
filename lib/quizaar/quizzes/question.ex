@@ -16,9 +16,10 @@ defmodule Quizaar.Quizzes.Question do
   end
 
   @doc false
-defp all_fields do
+  defp all_fields do
     __MODULE__.__schema__(:fields)
   end
+
   def changeset(question, attrs) do
     question
     |> cast(attrs, all_fields())

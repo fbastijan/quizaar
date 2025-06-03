@@ -23,5 +23,6 @@ defmodule QuizaarWeb.UserJSON do
       biography: user.biography
     }
   end
+
   def data(nil), do: nil
 end

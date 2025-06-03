@@ -7,9 +7,9 @@ defmodule Quizaar.Repo.Migrations.CreateAccounts do
       add :email, :string
       add :hash_password, :string
 
-
       timestamps(type: :utc_datetime)
     end
+
     create unique_index(:accounts, [:email])
   end
 end

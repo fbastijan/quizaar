@@ -21,7 +21,7 @@ defmodule QuizaarWeb.QuizJSON do
       title: quiz.title,
       description: quiz.description,
       join_code: quiz.join_code,
-      user_id: quiz.user_id,
+      user_id: quiz.user_id
     }
   end
 end

@@ -15,6 +15,7 @@ defmodule Quizaar.Users.User do
 
     timestamps(type: :utc_datetime)
   end
+
   defp all_fields do
     __MODULE__.__schema__(:fields)
   end

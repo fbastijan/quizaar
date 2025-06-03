@@ -11,8 +11,8 @@ defmodule QuizaarWeb.Endpoint do
     same_site: "Lax"
   ]
   socket "/socket", QuizaarWeb.UserSocket,
-        websocket: true,
-        longpoll: false
+    websocket: true,
+    longpoll: false
 
   # Serve at "/" the static files from "priv/static" directory.
   #

@@ -1,6 +1,4 @@
-
 import Config
-
 
 # Configure your database
 config :quizaar, Quizaar.Repo,

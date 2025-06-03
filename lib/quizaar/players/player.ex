@@ -14,11 +14,10 @@ defmodule Quizaar.Players.Player do
     timestamps(type: :utc_datetime)
   end
 
-
-
   defp all_fields do
     __MODULE__.__schema__(:fields)
   end
+
   @doc false
   def changeset(player, attrs) do
     player

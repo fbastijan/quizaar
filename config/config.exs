@@ -27,16 +27,15 @@ config :logger, :console,
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id]
 
-
 config :quizaar, QuizaarWeb.Auth.Guardian,
   issuer: "quizaar",
   secret_key: "G5UZdqYZTTRJ2GqMwUoeai+XjBG9ZgKn6GCcu9Omf5p0Y+2N68KP5twU6YCxDcrl"
-
 
 config :guardian, Guardian.DB,
   repo: Quizaar.Repo,
   schema_name: "guardian_tokens",
   sweep_interval: 60
+
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 config :hackney, :force_ipv4, true

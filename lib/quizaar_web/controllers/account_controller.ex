@@ -8,10 +8,6 @@ defmodule QuizaarWeb.AccountController do
 
   require Logger
 
-
-
-
-
   action_fallback QuizaarWeb.FallbackController
 
   import QuizaarWeb.Auth.AuthorizedPlug
@@ -41,7 +37,6 @@ defmodule QuizaarWeb.AccountController do
         |> Plug.Conn.put_session(:account_id, account.id)
         |> put_status(:ok)
         |> render(:show2, account: account, token: token)
-
 
       {:error, :unauthorized} ->
         raise ErrorResponse.Unauthorized, message: "Email or password incorrect."
@@ -75,12 +70,11 @@ defmodule QuizaarWeb.AccountController do
   end
 
   def show(conn, %{}) do
-    #account = Accounts.get_full_account(id)
+    # account = Accounts.get_full_account(id)
     render(conn, :show_full_account, account: conn.assigns.account)
   end
 
   def current_account(conn, %{}) do
-
     account = conn.assigns[:account]
 
     render(conn, :show_full_account, account: account)

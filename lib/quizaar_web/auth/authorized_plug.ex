@@ -24,6 +24,4 @@ defmodule QuizaarWeb.Auth.AuthorizedPlug do
       raise ErrorResponse.Forbidden
     end
   end
-
-
 end

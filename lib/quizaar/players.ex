@@ -102,15 +102,16 @@ defmodule Quizaar.Players do
     Player.changeset(player, attrs)
   end
 
-
   def count_players_for_quiz(quiz_id) do
-  import Ecto.Query
-  Quizaar.Repo.aggregate(
-    from(p in Quizaar.Players.Player, where: p.quiz_id == ^quiz_id),
-    :count,
-    :id
-  )
-end
+    import Ecto.Query
+
+    Quizaar.Repo.aggregate(
+      from(p in Quizaar.Players.Player, where: p.quiz_id == ^quiz_id),
+      :count,
+      :id
+    )
+  end
+
   def get_player_by_session_id(session_id) do
     Repo.get_by(Player, session_id: session_id)
   end
