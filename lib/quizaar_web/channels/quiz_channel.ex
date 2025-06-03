@@ -66,11 +66,37 @@ defmodule QuizaarWeb.QuizChannel do
     count < max_players
   end
 
-  @impl true
+
+
+  defp question_expired?(quiz) do
+    if(quiz.current_question_id != nil)do
+    current_time = DateTime.utc_now()
+    question_end_time = DateTime.add(quiz.question_started_at, quiz.question_time_limit, :second)
+    DateTime.compare(current_time, question_end_time) == :gt
+    else
+      false
+    end
+  end
+
+
+   @impl true
+  def handle_info(:close_question, socket) do
+  broadcast!(socket, "question_closed", %{message: "Time is up! No more answers allowed."})
+  # Optionally, update socket assigns or state to disallow further answers
+  {:noreply, assign(socket, :question_closed, true)}
+end
+@impl true
   def handle_info(:after_join, socket) do
     join_code = socket.assigns.join_code
     quiz = socket.assigns.quiz
+    socket = if question_expired?(quiz) do
+      socket = assign(socket, :question_closed, true)
+      push(socket, "question_closed", %{message: "Time is up! No more answers allowed."})
+      socket
+    else
+      socket = assign(socket, :question_closed, false)
 
+    end
     socket =
       case Quizzes.get_question!(quiz.current_question_id) do
         nil -> socket
@@ -96,7 +122,6 @@ defmodule QuizaarWeb.QuizChannel do
       quiz_id: quiz.id
     }
 
-    IO.inspect(player_params, label: "Player Params")
     handle_player_creation(socket, quiz, player_params, account.id, account.user.full_name)
   end
 
@@ -115,17 +140,21 @@ defmodule QuizaarWeb.QuizChannel do
   end
 
   defp handle_player_creation(socket, quiz, player_params, presence_key, user_name) do
+    {:ok, _} =
+            Presence.track(socket, presence_key, %{
+              online_at: inspect(System.system_time(:second)),
+              user_name: user_name,
+              ready: false
+            })
+    push(socket, "presence_state", Presence.list(socket))
+
     if can_add_player?(quiz.id, 10) do
       case Players.create_player(player_params) do
         {:ok, player} ->
-          {:ok, _} =
-            Presence.track(socket, presence_key, %{
-              online_at: inspect(System.system_time(:second)),
-              user_name: user_name
-            })
+
 
           socket = assign(socket, :player, player)
-          push(socket, "presence_state", Presence.list(socket))
+
           {:noreply, socket}
 
         {:error, changeset} ->
@@ -169,13 +198,18 @@ defmodule QuizaarWeb.QuizChannel do
     end
   end
 
-  def handle_in("answer_question", payload, socket) do
-    answered =
-      Quizzes.check_if_answered(socket.assigns.player.id, socket.assigns.current_question.id)
 
-    if socket.assigns.player != nil and !answered do
-      question = socket.assigns.current_question
-      player = socket.assigns.player
+
+
+  @impl true
+  def handle_in("answer_question", payload, socket) do
+  player =socket.assigns.player
+  question = socket.assigns.current_question
+  expired = socket.assigns[:question_closed] || false
+    answered =
+      Quizzes.check_if_answered(player.id, question.id)
+
+    if player != nil and not answered and not expired  do
       quiz = socket.assigns.quiz
       answer = payload["answer"]
 
@@ -206,6 +240,7 @@ defmodule QuizaarWeb.QuizChannel do
           broadcast!(socket, "question_served", %{
             question: QuestionJSON.show(%{question: question})
           })
+          Process.send_after(self(), :close_question, (question.question_time_limit +1) * 1000)
 
           {:noreply, socket}
 
@@ -224,6 +259,29 @@ defmodule QuizaarWeb.QuizChannel do
       {:noreply, socket}
     end
   end
+
+  def handle_in("ready_up", _payload, socket) do
+    if socket.assigns.role == "organizer" || "player" do
+      quiz = socket.assigns.quiz
+      presence_key =
+      cond do
+        Map.has_key?(socket.assigns, :session_id) -> socket.assigns.session_id
+        Map.has_key?(socket.assigns, :account) -> socket.assigns.account.id
+        true -> nil
+      end
+      IO.inspect(presence_key, label: "Presence Key")
+      Presence.update(socket, presence_key, %{ready: true})
+      push(socket, "presence_state", Presence.list(socket))
+      {:noreply, socket}
+       else
+      push(socket, "error", %{message: "You are not authorized to ready up"})
+      {:noreply, socket}
+      end
+
+    end
+
+
+
 
   @impl true
 
