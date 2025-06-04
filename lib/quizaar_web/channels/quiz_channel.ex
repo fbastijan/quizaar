@@ -122,7 +122,7 @@ end
       quiz_id: quiz.id
     }
 
-    handle_player_creation(socket, quiz, player_params, account.id, account.user.full_name)
+    handle_player_creation(socket, quiz, player_params, account.user.id, account.user.full_name)
   end
 
   defp handle_guest_player(socket, quiz) do
@@ -232,7 +232,8 @@ end
 
   def handle_in("serve_question", _payload, socket) do
     if socket.assigns.role == "organizer" do
-      case Quizzes.serve_question(socket.assigns.quiz) do
+      quiz= socket.assigns.quiz
+      case Quizzes.serve_question(quiz) do
         {:ok, question} ->
           # Handle the successful response
           socket = assign(socket, :current_question, question)
@@ -240,7 +241,7 @@ end
           broadcast!(socket, "question_served", %{
             question: QuestionJSON.show(%{question: question})
           })
-          Process.send_after(self(), :close_question, (question.question_time_limit +1) * 1000)
+          Process.send_after(self(), :close_question, quiz.question_time_limit * 1000)
 
           {:noreply, socket}
 
@@ -266,7 +267,7 @@ end
       presence_key =
       cond do
         Map.has_key?(socket.assigns, :session_id) -> socket.assigns.session_id
-        Map.has_key?(socket.assigns, :account) -> socket.assigns.account.id
+        Map.has_key?(socket.assigns, :account) -> socket.assigns.account.user.id
         true -> nil
       end
       IO.inspect(presence_key, label: "Presence Key")
@@ -279,8 +280,67 @@ end
       end
 
     end
+  @impl true
+  def handle_in("unready", _payload, socket) do
+    if socket.assigns.role == "organizer" || "player" do
+      quiz = socket.assigns.quiz
+      presence_key =
+      cond do
+        Map.has_key?(socket.assigns, :session_id) -> socket.assigns.session_id
+        Map.has_key?(socket.assigns, :account) -> socket.assigns.account.id
+        true -> nil
+      end
 
+      Presence.update(socket, presence_key, %{ready: false})
+      push(socket, "presence_state", Presence.list(socket))
+      {:noreply, socket}
+       else
+      push(socket, "error", %{message: "You are not authorized to unready"})
+      {:noreply, socket}
+      end
 
+  end
+ defp all_players_ready?(socket) do
+  players = Presence.list(socket)
+  Enum.all?(players, fn
+    {_key, %{metas: metas}} ->
+      Enum.any?(metas, fn meta -> meta[:ready] == true end)
+  end)
+end
+  defp all_players_present?(socket, quiz_id) do
+    players_present = Presence.list(socket)
+    players = Players.get_players_by_quiz(quiz_id)
+    Enum.all?(players, fn player ->
+      Map.has_key?(players_present, player.session_id) || Map.has_key?(players_present, player.user_id)
+    end)
+  end
+  defp check_if_all_players_ready(socket) do
+    quiz_id = socket.assigns.quiz_id
+    if all_players_ready?(socket) and all_players_present?(socket, quiz_id) do
+      broadcast!(socket, "all_players_ready", %{message: "All players are ready!"})
+      {:ok, socket}
+    else
+      {:error, :not_ready}
+    end
+  end
+
+  def handle_in("quiz_start", _payload, socket) do
+    if socket.assigns.role == "organizer" do
+      case check_if_all_players_ready(socket) do
+        {:ok, socket} ->
+          broadcast!(socket, "quiz_start", %{message: "Quiz is starting!"})
+          # Optionally, serve the first question here
+          handle_in("serve_question", %{}, socket)
+
+        {:error, :not_ready} ->
+          push(socket, "error", %{message: "Not all players are ready"})
+          {:noreply, socket}
+      end
+    else
+      push(socket, "error", %{message: "You are not authorized to start the quiz"})
+      {:noreply, socket}
+    end
+  end
 
 
   @impl true
