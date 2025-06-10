@@ -39,6 +39,7 @@ defmodule QuizaarWeb.Router do
 
   scope "/api", QuizaarWeb do
     pipe_through [:api, :auth]
+    get "/accounts/current", AccountController, :current_account
     get "/accounts/by_id/:id", AccountController, :show
     patch "/accounts/update", AccountController, :update
     post "/accounts/refresh_session", AccountController, :refresh_session

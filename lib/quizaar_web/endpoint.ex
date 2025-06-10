@@ -42,5 +42,17 @@ defmodule QuizaarWeb.Endpoint do
   plug Plug.MethodOverride
   plug Plug.Head
   plug Plug.Session, @session_options
+
+
+    plug Corsica,
+    origins: [
+      "http://localhost:5173",
+
+    ],
+    max_age: 86400,
+    allow_headers: :all,
+    allow_credentials: true,
+    allow_methods: :all
+
   plug QuizaarWeb.Router
 end
