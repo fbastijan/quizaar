@@ -324,9 +324,9 @@ defmodule Quizaar.Quizzes do
   """
   def create_questions(
         quiz_id,
-        config \\ %{number: 5, topic: "math", description: "none", difficulty: "normal"}
+        config \\ %{"number" => 5, "topic" => "math", "description"=> "none", "difficulty"=> "normal"}
       ) do
-    %{number: number, topic: topic, description: description, difficulty: difficulty} = config
+    %{"number" => number, "topic" => topic, "description"=> description, "difficulty"=> difficulty} = config
     {:ok, questions} = generate_questions(number, topic, description, difficulty)
 
     case get_quiz!(quiz_id) do

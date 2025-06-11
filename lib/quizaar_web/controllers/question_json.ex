@@ -4,23 +4,28 @@ defmodule QuizaarWeb.QuestionJSON do
   @doc """
   Renders a list of questions.
   """
-  def index(%{questions: questions}) do
-    %{data: for(question <- questions, do: data(question))}
-  end
-
+def index(assigns) do
+  %{questions: Enum.map(assigns.questions, &data/1)}
+end
   @doc """
   Renders a single question.
   """
   def show(%{question: question}) do
     %{data: data(question)}
   end
+def data({:ok, %Quizaar.Quizzes.Question{} = question}), do: data(question)
 
-  defp data(%Question{} = question) do
-    %{
-      id: question.id,
-      text: question.text,
-      options: question.options,
-      answer: question.answer
-    }
-  end
+
+  def data(%Quizaar.Quizzes.Question{} = question) do
+  %{
+    id: question.id,
+    text: question.text,
+    answer: question.answer,
+    options: question.options,
+    used: question.used,
+    quiz_id: question.quiz_id,
+    inserted_at: question.inserted_at,
+    updated_at: question.updated_at
+  }
+end
 end

@@ -6,7 +6,7 @@ defmodule QuizaarWeb.QuizController do
 
   action_fallback QuizaarWeb.FallbackController
   import QuizaarWeb.Auth.AuthorizedPlug
-  plug :is_authorized when action in [:create, :update, :delete]
+  plug :is_authorized when action in [:update, :delete]
 
   def index(conn, _params) do
     quizzes = Quizzes.list_quizzes()
@@ -14,7 +14,12 @@ defmodule QuizaarWeb.QuizController do
   end
 
   def create(conn, %{"quiz" => quiz_params}) do
-    with {:ok, %Quiz{} = quiz} <- Quizzes.create_quiz(quiz_params) do
+      updated_params =
+      quiz_params
+      |> Map.put("user_id", conn.assigns.account.user.id)
+
+
+    with {:ok, %Quiz{} = quiz} <- Quizzes.create_quiz(updated_params) do
       conn
       |> put_status(:created)
       |> render(:show, quiz: quiz)
