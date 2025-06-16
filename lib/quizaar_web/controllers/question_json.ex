@@ -7,6 +7,11 @@ defmodule QuizaarWeb.QuestionJSON do
 def index(assigns) do
   %{questions: Enum.map(assigns.questions, &data/1)}
 end
+
+
+def index2(%{questions: questions}) do
+   %{data: for(question <- questions, do: data(question))}
+end
   @doc """
   Renders a single question.
   """

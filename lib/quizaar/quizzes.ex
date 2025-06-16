@@ -148,6 +148,10 @@ defmodule Quizaar.Quizzes do
   """
   def get_question!(id), do: Repo.get!(Question, id)
 
+
+  def get_questions_by_quiz_id(quiz_id) do
+     Repo.all(from q in Question, where: q.quiz_id == ^quiz_id)
+  end
   @doc """
   Creates a question.
 

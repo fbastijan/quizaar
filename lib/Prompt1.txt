@@ -21,8 +21,8 @@ Please follow these guidelines:
 11. The structure should be clear and concise, making sure each question stands on its own with no overlap or repetition in the choices.
 12. Choice based questions should have exactly 4 options
 13. You can make up incorrect answer options on the spot by adding prefixes or words to the answer that make sense
-14. Rewrite all questions to avoid time-relative terms like ‘current’, ‘now’, or ‘recent’. Instead, make all questions explicitly time-anchored by specifying the year. 
-    For example, change 'Who is the current president of the U.S.?' to 'Who was the president of the U.S. in 2024?  
+14. Do this only for time sensitive questions, otherwise skip: Rewrite all questions to avoid time-relative terms like ‘current’, ‘now’, or ‘recent’. Instead, make all questions explicitly time-anchored by specifying the year. 
+    For example, change 'Who is the current president of the U.S.?' to 'Who was the president of the U.S. in 2024?,  
 IMPORTANT: Every option must be a plausible, distinct, and incorrect answer except for the single correct answer.
 The response should not include any newline tags like: \\n and entire response should be in one line
 Example JSON structure for each question:
