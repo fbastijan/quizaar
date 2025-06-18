@@ -7,7 +7,8 @@ defmodule QuizaarWeb.QuizChannel do
   alias QuizaarWeb.Presence
 
   alias QuizaarWeb.QuestionJSON
-  @impl true
+
+ @impl true
 
   def join("quiz:" <> join_code, params, socket) do
     quiz = Quizzes.get_quiz_by_code!(join_code)
@@ -39,11 +40,11 @@ defmodule QuizaarWeb.QuizChannel do
         token ->
           case authorized(token, socket) do
             {:ok, socket} ->
+
               role = if socket.assigns.account.user.id == quiz.user_id, do: "organizer"
 
-              player = Players.get_player_by_user(socket.assigns.account.user.id)
-              IO.inspect(quiz.id, label: "Quiz ID")
-              IO.inspect(socket.assigns.account.user.id, label: "User ID")
+              player = Players.get_player_by_user_and_quiz(socket.assigns.account.user.id, quiz.id)
+
 
               socket
               |> assign(:role, role)
@@ -51,13 +52,13 @@ defmodule QuizaarWeb.QuizChannel do
               |> assign(:quiz_id, quiz.id)
 
             {:error, reason} ->
-              IO.inspect("Unauthorized access attempt with token: #{reason}")
+
               socket
           end
       end
 
     send(self(), :after_join)
-    IO.inspect(socket.assigns)
+
     {:ok, socket}
   end
 
@@ -65,6 +66,7 @@ defmodule QuizaarWeb.QuizChannel do
     count = Players.count_players_for_quiz(quiz_id)
     count < max_players
   end
+
 
 
 
@@ -97,21 +99,40 @@ end
       socket = assign(socket, :question_closed, false)
 
     end
-    socket =
-      case Quizzes.get_question!(quiz.current_question_id) do
-        nil -> socket
-        question -> assign(socket, :current_question, question)
-      end
 
-    IO.inspect(socket.assigns, label: "Socket Assigns After Join")
+  socket =
+    case quiz.current_question_id do
+      nil -> socket
+      question_id ->
+        case Quizzes.get_question!(question_id) do
+          nil -> socket
+          question -> assign(socket, :current_question, question)
+        end
+    end
+    # If the user is the organizer, do not add them as a player
 
-    cond do
+
+
+    if socket.assigns.role == "player" do
+      cond do
       account = socket.assigns[:account] ->
         handle_registered_player(socket, quiz, account)
 
       true ->
         handle_guest_player(socket, quiz)
+
+
+      end
+
+    else
+      # If the user is not a player, just assign the quiz and role
+      push(socket, "presence_state", Presence.list(socket))
+      {:noreply, socket}
     end
+
+
+
+
   end
 
   defp handle_registered_player(socket, quiz, account) do
@@ -136,14 +157,18 @@ end
       user_id: nil
     }
 
+    push(socket, "guest_joined", %{session_id: session_id, name: guest_name})
+
     handle_player_creation(socket, quiz, player_params, session_id, guest_name)
   end
 
   defp handle_player_creation(socket, quiz, player_params, presence_key, user_name) do
-    {:ok, _} =
+
+    {:ok, whatever} =
             Presence.track(socket, presence_key, %{
               online_at: inspect(System.system_time(:second)),
               user_name: user_name,
+              role: socket.assigns.role,
               ready: false
             })
     push(socket, "presence_state", Presence.list(socket))
@@ -155,6 +180,7 @@ end
 
           socket = assign(socket, :player, player)
 
+
           {:noreply, socket}
 
         {:error, changeset} ->
@@ -164,10 +190,35 @@ end
       end
     else
       socket = assign(socket, :role, "spectator")
+      Presence.update(socket, presence_key, %{role: "spectator"})
       push(socket, "info", %{message: "Max players reached, you are a spectator"})
       {:noreply, socket}
     end
   end
+  @impl true
+  def handle_in("get_players", payload, socket) do
+    if socket.assigns.role == "organizer" || socket.assigns.role == "player" do
+      quiz_id = socket.assigns.quiz_id || payload["quiz_id"]
+      players = Players.get_players_by_quiz(quiz_id)
+
+      player_list = Enum.map(players, fn player ->
+        %{
+          id: player.id,
+          name: player.name,
+          session_id: player.session_id,
+          user_id: player.user_id
+        }
+      end)
+      IO.inspect(player_list, label: "Player List")
+
+      push(socket, "players_list", %{players: player_list})
+       {:reply, {:ok, %{players: player_list}}, socket}
+    else
+      push(socket, "error", %{message: "You are not authorized to get players"})
+      {:noreply, socket}
+    end
+  end
+
 
   @impl true
   def handle_in("generate_questions", payload, socket) do
