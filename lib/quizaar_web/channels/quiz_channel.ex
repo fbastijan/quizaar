@@ -23,12 +23,13 @@ defmodule QuizaarWeb.QuizChannel do
         nil ->
           # Guest: assign a session_id and guest role
           session_id =
-            case Map.get(params, "session_id") do
-              nil -> Ecto.UUID.generate()
-              session_id -> session_id
-            end
+           case Map.get(params, "session_id") do
+            nil -> Ecto.UUID.generate()
+            "" -> Ecto.UUID.generate()
+            session_id -> session_id
+  end
 
-          player = Players.get_player_by_session_id(session_id)
+          player = Players.get_player_by_session_id_and_quiz(session_id, quiz.id)
 
           socket
           |> assign(:guest, true)
@@ -147,7 +148,8 @@ end
   end
 
   defp handle_guest_player(socket, quiz) do
-    session_id = socket.assigns[:session_id] || Ecto.UUID.generate()
+    session_id = socket.assigns[:session_id]|| Ecto.UUID.generate()
+    IO.inspect(session_id, label: "Session ID")
     guest_name = socket.assigns[:name] || "Guest Player"
 
     player_params = %{
@@ -164,7 +166,7 @@ end
 
   defp handle_player_creation(socket, quiz, player_params, presence_key, user_name) do
 
-    {:ok, whatever} =
+    {:ok, _} =
             Presence.track(socket, presence_key, %{
               online_at: inspect(System.system_time(:second)),
               user_name: user_name,
@@ -179,7 +181,14 @@ end
 
 
           socket = assign(socket, :player, player)
-
+          broadcast!(socket, "player_created", %{
+            player: %{
+              id: player.id,
+              name: player.name,
+              session_id: player.session_id,
+              user_id: player.user_id
+            }
+          })
 
           {:noreply, socket}
 
@@ -248,15 +257,38 @@ end
       {:noreply, socket}
     end
   end
+  defp time_left(quiz) do
+    if quiz.current_question_id && quiz.question_started_at && quiz.question_time_limit do
+      now = DateTime.utc_now()
+      end_time = DateTime.add(quiz.question_started_at, quiz.question_time_limit, :second)
+      time_left = DateTime.diff(end_time, now, :second)
+      if time_left < 0, do: 0, else: time_left
+    else
+      0
+    end
+  end
+
+  def handle_in("get_current_question", _payload, socket) do
+    current_question = socket.assigns.current_question
+    quiz = socket.assigns.quiz
+
+    {:reply, {:ok, %{question: QuestionJSON.show(%{question: current_question}), time_left: time_left(quiz)}}, socket}
+  end
+
+
 
 
 
 
   @impl true
   def handle_in("answer_question", payload, socket) do
-  player =socket.assigns.player
-  question = socket.assigns.current_question
-  expired = socket.assigns[:question_closed] || false
+    if socket.assigns.role != "player" do
+      push(socket, "error", %{message: "Only players can answer questions"})
+      {:reply, {:error, "Only players can answer questions"}, socket}
+    else
+      player = socket.assigns.player
+      question = socket.assigns.current_question
+      expired = socket.assigns[:question_closed] || false
     answered =
       Quizzes.check_if_answered(player.id, question.id)
 
@@ -267,8 +299,8 @@ end
       case Quizzes.verify_choice(question, quiz, player.id, answer) do
         {:ok, %{result: result, answer: answer}} ->
           # Handle the successful response
-          push(socket, "answer_result", %{result: result.id, answer: answer.id})
-          {:noreply, socket}
+
+          {:reply, {:ok, %{result: result.score , answer: answer.id} }, socket}
 
         _ ->
           # Handle the error response
@@ -280,21 +312,47 @@ end
       {:noreply, socket}
     end
   end
+  end
+  def handle_in("get_all_answers_to_current", _payload, socket) do
+    current_question = socket.assigns.current_question
+    quiz = socket.assigns.quiz
 
+    if current_question == nil do
+      push(socket, "error", %{message: "No current question"})
+      {:reply, {:error, "No current question"}, socket}
+    end
+
+    answers = Quizzes.get_all_answers_to_current(current_question.id)
+
+    {:reply, {:ok, %{
+      quiz: %{
+        id: quiz.id,
+        title: quiz.title,
+        description: quiz.description,
+        join_code: quiz.join_code
+      },
+      current_question: QuestionJSON.show(%{question: current_question}),
+      answers: QuizaarWeb.AnswerJSON.index(%{answers: answers})
+    }}, socket}
+  end
   def handle_in("serve_question", _payload, socket) do
     if socket.assigns.role == "organizer" do
+
       quiz= socket.assigns.quiz
       case Quizzes.serve_question(quiz) do
-        {:ok, question} ->
+        {:ok, question, quiz} ->
           # Handle the successful response
-          socket = assign(socket, :current_question, question)
+         socket = socket
+         |> assign( :current_question, question)
+         |> assign( :quiz, quiz)
 
           broadcast!(socket, "question_served", %{
-            question: QuestionJSON.show(%{question: question})
+            question: QuestionJSON.show(%{question: question}),
+            time_left: time_left(quiz)
           })
-          Process.send_after(self(), :close_question, quiz.question_time_limit * 1000)
+          Quizaar.QuizTimer.start_timer(quiz.join_code, quiz.question_time_limit, self())
 
-          {:noreply, socket}
+          {:reply,  :ok, socket}
 
         {:error, :end, _reason} ->
           # Handle the end of the quiz
@@ -323,7 +381,7 @@ end
       end
       IO.inspect(presence_key, label: "Presence Key")
       Presence.update(socket, presence_key, %{ready: true})
-      push(socket, "presence_state", Presence.list(socket))
+
       {:noreply, socket}
        else
       push(socket, "error", %{message: "You are not authorized to ready up"})
@@ -407,9 +465,14 @@ end
           {:noreply, socket}
 
         player ->
-          Players.delete_player(player)
-          push(socket, "player_deleted", %{message: "Player deleted successfully"})
-          {:noreply, socket}
+        {:ok,  player} = Players.delete_player(player)
+         player2 =  %{
+          id: player.id,
+          name: player.name,
+          session_id: player.session_id,
+          user_id: player.user_id
+        }
+          {:reply, {:ok, %{player: player2}}, socket}
       end
     else
       push(socket, "error", %{message: "You are not authorized to delete players"})

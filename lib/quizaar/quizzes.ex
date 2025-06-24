@@ -418,10 +418,10 @@ defmodule Quizaar.Quizzes do
 
     if question do
       case handle_question(quiz, question, time_limit) do
-        {:ok, examp} ->
-          IO.inspect(examp, label: "Transaction Result")
+        {:ok, res} ->
+
           # Successfully updated the quiz and question
-          {:ok, question}
+          {:ok, res.question, res.quiz}
 
         {:error, _} ->
           # Handle error case
@@ -752,5 +752,18 @@ end
     |> Repo.transaction()
   end
 
+  def get_all_answers_to_current(question_id) do
+    import Ecto.Query, only: [from: 2]
+    alias Quizaar.Repo
+    alias Quizaar.Quizzes.Answer
+    alias Quizaar.Players.Player
+
+    from(a in Answer,
+      join: p in Player, on: a.player_id == p.id,
+      where: a.question_id == ^question_id,
+      preload: [player: p]
+    )
+    |> Repo.all()
+  end
 
 end

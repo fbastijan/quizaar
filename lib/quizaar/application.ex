@@ -22,7 +22,8 @@ defmodule Quizaar.Application do
       # {Quizaar.Worker, arg},
       # Start to serve requests, typically the last entry
       QuizaarWeb.Endpoint,
-      {Finch, name: Quizaar.Finch}
+      {Finch, name: Quizaar.Finch},
+      {Registry, keys: :unique, name: Quizaar.TimerRegistry}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
