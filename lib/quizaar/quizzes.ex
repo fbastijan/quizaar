@@ -763,7 +763,22 @@ end
       where: a.question_id == ^question_id,
       preload: [player: p]
     )
+
     |> Repo.all()
+
+
+  end
+ def get_player_score(player_id) do
+    import Ecto.Query, only: [from: 2]
+    alias Quizaar.Repo
+    alias Quizaar.Quizzes.Result
+
+    from(r in Result,
+      where: r.player_id == ^player_id,
+      select: r.score
+
+    )
+    |> Repo.one()
   end
 
 end

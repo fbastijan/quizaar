@@ -5,7 +5,7 @@ defmodule QuizaarWeb.QuizChannel do
   alias Quizaar.Quizzes
   alias Quizaar.Players
   alias QuizaarWeb.Presence
-
+  alias Quizaar.Quizzes.Question
   alias QuizaarWeb.QuestionJSON
 
  @impl true
@@ -45,6 +45,7 @@ defmodule QuizaarWeb.QuizChannel do
               role = if socket.assigns.account.user.id == quiz.user_id, do: "organizer"
 
               player = Players.get_player_by_user_and_quiz(socket.assigns.account.user.id, quiz.id)
+
 
 
               socket
@@ -101,16 +102,34 @@ end
 
     end
 
+
+
   socket =
     case quiz.current_question_id do
       nil -> socket
       question_id ->
         case Quizzes.get_question!(question_id) do
           nil -> socket
-          question -> assign(socket, :current_question, question)
+          question ->
+             player = socket.assigns[:player]
+          answered =  if player do
+            Quizzes.check_if_answered(socket.assigns.player.id, question.id) || false
+            end
+            if answered do
+              push(socket, "question_closed", %{message: "You have already answered this question."})
+            end
+
+            assign(socket, :current_question, question)
         end
     end
-    # If the user is the organizer, do not add them as a player
+
+
+    if question = socket.assigns[:current_question]   do
+  push(socket, "active_question", %{
+    question: QuestionJSON.show(%{question: question}),
+    time_left: time_left(quiz)
+  })
+end
 
 
 
@@ -149,7 +168,7 @@ end
 
   defp handle_guest_player(socket, quiz) do
     session_id = socket.assigns[:session_id]|| Ecto.UUID.generate()
-    IO.inspect(session_id, label: "Session ID")
+
     guest_name = socket.assigns[:name] || "Guest Player"
 
     player_params = %{
@@ -218,7 +237,7 @@ end
           user_id: player.user_id
         }
       end)
-      IO.inspect(player_list, label: "Player List")
+
 
       push(socket, "players_list", %{players: player_list})
        {:reply, {:ok, %{players: player_list}}, socket}
@@ -286,20 +305,29 @@ end
       push(socket, "error", %{message: "Only players can answer questions"})
       {:reply, {:error, "Only players can answer questions"}, socket}
     else
+      changeset = Question.changeset(%Quizzes.Question{}, payload["question"])
+
+   question=   if changeset.valid? do
+        question = Ecto.Changeset.apply_changes(changeset)
+        # Now you have a struct with atom keys and proper types!
+      else
+        nil
+      end
+
       player = socket.assigns.player
-      question = socket.assigns.current_question
       expired = socket.assigns[:question_closed] || false
     answered =
       Quizzes.check_if_answered(player.id, question.id)
 
     if player != nil and not answered and not expired  do
-      quiz = socket.assigns.quiz
+      quiz = Quizzes.get_quiz!(socket.assigns.quiz.id)
       answer = payload["answer"]
 
       case Quizzes.verify_choice(question, quiz, player.id, answer) do
         {:ok, %{result: result, answer: answer}} ->
           # Handle the successful response
 
+          broadcast!(socket, "answer_received", %{})
           {:reply, {:ok, %{result: result.score , answer: answer.id} }, socket}
 
         _ ->
@@ -335,6 +363,29 @@ end
       answers: QuizaarWeb.AnswerJSON.index(%{answers: answers})
     }}, socket}
   end
+
+  def handle_in("player_stats", _payload, socket) do
+
+    if socket.assigns.role == "organizer" || socket.assigns.role == "player" do
+      quiz_id = socket.assigns.quiz_id
+      players = Players.get_players_by_quiz(quiz_id)
+
+      player_stats = Enum.map(players, fn player ->
+        %{
+          id: player.id,
+          name: player.name,
+          session_id: player.session_id,
+          user_id: player.user_id,
+          score: Quizzes.get_player_score(player.id)
+        }
+      end)
+
+      {:reply, {:ok, %{players: player_stats}}, socket}
+    else
+      push(socket, "error", %{message: "You are not authorized to get player stats"})
+      {:noreply, socket}
+    end
+  end
   def handle_in("serve_question", _payload, socket) do
     if socket.assigns.role == "organizer" do
 
@@ -352,7 +403,10 @@ end
           })
           Quizaar.QuizTimer.start_timer(quiz.join_code, quiz.question_time_limit, self())
 
-          {:reply,  :ok, socket}
+          {:reply,  {:ok, %{
+            question: QuestionJSON.show(%{question: question}),
+            time_left: time_left(quiz)
+          } }, socket}
 
         {:error, :end, _reason} ->
           # Handle the end of the quiz
@@ -379,7 +433,7 @@ end
         Map.has_key?(socket.assigns, :account) -> socket.assigns.account.user.id
         true -> nil
       end
-      IO.inspect(presence_key, label: "Presence Key")
+
       Presence.update(socket, presence_key, %{ready: true})
 
       {:noreply, socket}
@@ -451,6 +505,9 @@ end
     end
   end
 
+  def handle_in("", _payload, socket) do
+
+  end
 
   @impl true
 

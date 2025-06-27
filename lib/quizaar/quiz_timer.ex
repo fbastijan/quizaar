@@ -3,10 +3,18 @@ defmodule Quizaar.QuizTimer do
 
   # Start a timer for a quiz
   def start_timer(join_code, time_limit, channel_pid) do
+     stop_timer(join_code)
     GenServer.start(__MODULE__, {join_code, time_limit, channel_pid}, name: via_tuple(join_code))
   end
 
   defp via_tuple(join_code), do: {:via, Registry, {Quizaar.TimerRegistry, join_code}}
+
+  def stop_timer(join_code) do
+    case GenServer.whereis(via_tuple(join_code)) do
+      nil -> :ok
+      pid -> GenServer.stop(pid, :normal)
+    end
+  end
 
   @impl true
   def init({join_code, time_limit, channel_pid}) do
