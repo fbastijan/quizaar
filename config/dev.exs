@@ -4,7 +4,7 @@ import Config
 config :quizaar, Quizaar.Repo,
   username: "postgres",
   password: "12345679",
-  hostname: "localhost",
+  hostname: "db",
   database: "quizaar_dev",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
@@ -19,10 +19,11 @@ config :quizaar, Quizaar.Repo,
 config :quizaar, QuizaarWeb.Endpoint,
   # Binding to loopback ipv4 address prevents access from other machines.
   # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
-  http: [ip: {127, 0, 0, 1}, port: 4000],
+  http: [ip: {0, 0, 0, 0}, port: 4000],
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
+   server: true,
   secret_key_base: "pNx7fsOTz+SAoOa8eHKfRPqCQsAnv38Q/+ySu+jUnST/7X0zoRHST0riWanysGcC",
   watchers: []
 
