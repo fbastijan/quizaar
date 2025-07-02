@@ -11,8 +11,10 @@ defmodule QuizaarWeb.QuizChannel do
  @impl true
 
   def join("quiz:" <> join_code, params, socket) do
-    quiz = Quizzes.get_quiz_by_code!(join_code)
-
+    quiz = Quizzes.get_quiz_by_code(join_code)
+    if quiz == nil do
+      {:error, %{reason: "Quiz not found"}}
+    else
     socket =
       socket
       |> assign(:join_code, join_code)
@@ -62,6 +64,7 @@ defmodule QuizaarWeb.QuizChannel do
     send(self(), :after_join)
 
     {:ok, socket}
+    end
   end
 
   def can_add_player?(quiz_id, max_players \\ 10) do

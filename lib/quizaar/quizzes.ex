@@ -50,7 +50,7 @@ defmodule Quizaar.Quizzes do
       ** (Ecto.NoResultsError)
 
   """
-  def get_quiz_by_code!(join_code), do: Repo.get_by!(Quiz, join_code: join_code)
+  def get_quiz_by_code(join_code), do: Repo.get_by(Quiz, join_code: join_code)
 
   @doc """
   Creates a quiz.
