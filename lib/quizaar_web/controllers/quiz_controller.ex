@@ -39,7 +39,7 @@ defmodule QuizaarWeb.QuizController do
     end
   end
   def get_quiz_and_questions_by_join_code(conn, %{"join_code" => join_code}) do
-    with  quiz <- Quizzes.get_quiz_by_code!(join_code),
+    with  quiz <- Quizzes.get_quiz_by_code(join_code),
          questions <- Quizzes.get_questions_by_quiz_id(quiz.id)do
 
       render(conn, :show_full_quiz, quiz: quiz, questions: questions)
