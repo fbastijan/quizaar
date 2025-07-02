@@ -780,5 +780,31 @@ end
     )
     |> Repo.one()
   end
+def get_player_score_with_neighbours(player_id, quiz_id) do
+  import Ecto.Query, only: [from: 2]
+  alias Quizaar.Repo
+  alias Quizaar.Quizzes.Result
+  alias Quizaar.Players.Player
+
+  # Get all players for this quiz and their scores, sorted descending
+  results =
+    from(p in Player,
+      where: p.quiz_id == ^quiz_id,
+      join: r in Result, on: r.player_id == p.id,
+      order_by: [desc: r.score],
+      select: %{player_id: p.id, score: r.score, name: p.name}
+    )
+    |> Repo.all()
+
+  idx = Enum.find_index(results, fn r -> r.player_id == player_id end)
+  higher_player = if idx && idx > 0, do: Enum.at(results, idx - 1), else: %{name: nil, score: nil}
+  lower_player = if idx && idx < length(results) - 1, do: Enum.at(results, idx + 1), else: %{name: nil, score: nil}
+  player = Enum.at(results, idx)
+  %{
+    higher_player: higher_player,
+    player: Map.put(player, :placement, idx + 1),
+    lower_player: lower_player
+  }
+end
 
 end

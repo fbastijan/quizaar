@@ -307,13 +307,13 @@ end
     else
       changeset = Question.changeset(%Quizzes.Question{}, payload["question"])
 
-   question=   if changeset.valid? do
+   question= if changeset.valid? do
         question = Ecto.Changeset.apply_changes(changeset)
         # Now you have a struct with atom keys and proper types!
       else
         nil
       end
-
+    IO.inspect(question, label: "Question in answer_question")
       player = socket.assigns.player
       expired = socket.assigns[:question_closed] || false
     answered =
@@ -364,7 +364,7 @@ end
     }}, socket}
   end
 
-  def handle_in("player_stats", _payload, socket) do
+  def handle_in("players_stats", _payload, socket) do
 
     if socket.assigns.role == "organizer" || socket.assigns.role == "player" do
       quiz_id = socket.assigns.quiz_id
@@ -381,6 +381,35 @@ end
       end)
 
       {:reply, {:ok, %{players: player_stats}}, socket}
+    else
+      push(socket, "error", %{message: "You are not authorized to get player stats"})
+      {:noreply, socket}
+    end
+  end
+
+  def handle_in("player_stats", payload, socket) do
+    if socket.assigns.role == "organizer" || socket.assigns.role == "player" do
+      player = socket.assigns.player
+      quiz = socket.assigns.quiz
+
+      if player do
+        score = Quizzes.get_player_score_with_neighbours(player.id, quiz.id) || 0
+        IO.inspect(score, label: "Player in player_stats")
+        {:reply, {:ok, %{ higher_player: %{  name: score.higher_player.name || nil,
+          score:  score.higher_player.score || nil},
+        player: %{
+
+          name: score.player.name,
+          score: score.player.score,
+          placement: score.player.placement || 0
+        },
+        lower_player: %{ name: score.lower_player.name || nil,
+          score: score.lower_player.score || nil},
+        }}, socket}
+      else
+        push(socket, "error", %{message: "Player not found"})
+        {:noreply, socket}
+      end
     else
       push(socket, "error", %{message: "You are not authorized to get player stats"})
       {:noreply, socket}
