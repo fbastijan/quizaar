@@ -11,26 +11,24 @@ defmodule QuizaarWeb.QuestionController do
     render(conn, :index, questions: questions)
   end
 
-
   def generate_questions(conn, %{"quiz_id" => quiz_id} = params) do
+    config = Map.delete(params, "quiz_id")
 
-
-      config = Map.delete(params, "quiz_id")
     with {:ok, questions} <- Quizzes.create_questions(quiz_id, config) do
       conn
       |> put_status(:created)
-      |>render( :index, questions: questions)
+      |> render(:index, questions: questions)
     end
   end
 
-  def get_questions(conn, %{"quiz_id" =>quiz_id}) do
+  def get_questions(conn, %{"quiz_id" => quiz_id}) do
     with questions <- Quizzes.get_questions_by_quiz_id(quiz_id) do
       conn
       |> put_status(:ok)
-      |>
-      render( :index2, questions: questions)
+      |> render(:index2, questions: questions)
     end
   end
+
   def create(conn, %{"question" => question_params}) do
     with {:ok, %Question{} = question} <- Quizzes.create_question(question_params) do
       conn

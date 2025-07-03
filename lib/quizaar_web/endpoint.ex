@@ -43,11 +43,9 @@ defmodule QuizaarWeb.Endpoint do
   plug Plug.Head
   plug Plug.Session, @session_options
 
-
-    plug Corsica,
+  plug Corsica,
     origins: [
-      "http://localhost:5173",
-
+      "http://localhost:5173"
     ],
     max_age: 86400,
     allow_headers: :all,

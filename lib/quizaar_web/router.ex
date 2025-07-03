@@ -50,5 +50,8 @@ defmodule QuizaarWeb.Router do
     patch "/questions/:id", QuestionController, :update
     post "/questions/create", QuestionController, :create
     delete "/questions/:id", QuestionController, :delete
+
+    get "/quizzes/list/user", QuizController, :list_quizzes_by_user
+
   end
 end

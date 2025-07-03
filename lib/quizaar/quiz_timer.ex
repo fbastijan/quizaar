@@ -3,7 +3,7 @@ defmodule Quizaar.QuizTimer do
 
   # Start a timer for a quiz
   def start_timer(join_code, time_limit, channel_pid) do
-     stop_timer(join_code)
+    stop_timer(join_code)
     GenServer.start(__MODULE__, {join_code, time_limit, channel_pid}, name: via_tuple(join_code))
   end
 
@@ -26,7 +26,10 @@ defmodule Quizaar.QuizTimer do
   def handle_info(:close_question, state) do
     IO.puts("QuizTimer: Broadcasting question_closed for quiz #{state.join_code}")
     # Broadcast to all clients on the quiz topic
-    QuizaarWeb.Endpoint.broadcast!("quiz:" <> state.join_code, "question_closed", %{message: "Time is up! No more answers allowed."})
+    QuizaarWeb.Endpoint.broadcast!("quiz:" <> state.join_code, "question_closed", %{
+      message: "Time is up! No more answers allowed."
+    })
+
     {:stop, :normal, state}
   end
 end

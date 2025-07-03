@@ -14,10 +14,9 @@ defmodule QuizaarWeb.QuizController do
   end
 
   def create(conn, %{"quiz" => quiz_params}) do
-      updated_params =
+    updated_params =
       quiz_params
       |> Map.put("user_id", conn.assigns.account.user.id)
-
 
     with {:ok, %Quiz{} = quiz} <- Quizzes.create_quiz(updated_params) do
       conn
@@ -38,12 +37,17 @@ defmodule QuizaarWeb.QuizController do
       render(conn, :show, quiz: quiz)
     end
   end
-  def get_quiz_and_questions_by_join_code(conn, %{"join_code" => join_code}) do
-    with  quiz <- Quizzes.get_quiz_by_code(join_code),
-         questions <- Quizzes.get_questions_by_quiz_id(quiz.id)do
 
+  def get_quiz_and_questions_by_join_code(conn, %{"join_code" => join_code}) do
+    with quiz <- Quizzes.get_quiz_by_code(join_code),
+         questions <- Quizzes.get_questions_by_quiz_id(quiz.id) do
       render(conn, :show_full_quiz, quiz: quiz, questions: questions)
     end
+  end
+  def list_quizzes_by_user(conn, _params) do
+    user_id = conn.assigns.account.user.i
+    quizzes = Quizzes.list_quizzes_by_user(user_id)
+    render(conn, :index, quizzes: quizzes)
   end
 
   def delete(conn, %{"id" => id}) do

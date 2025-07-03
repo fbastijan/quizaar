@@ -127,12 +127,11 @@ defmodule Quizaar.Players do
   def get_player_by_user(user_id) do
     Repo.get_by(Player, user_id: user_id)
   end
+
   def get_players_by_quiz(quiz_id) do
     import Ecto.Query
 
     from(p in Player, where: p.quiz_id == ^quiz_id)
     |> Repo.all()
-
-
   end
 end

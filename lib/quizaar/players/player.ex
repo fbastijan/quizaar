@@ -23,7 +23,7 @@ defmodule Quizaar.Players.Player do
     player
     |> cast(attrs, all_fields())
     |> validate_required(all_fields() -- @optional_fields)
-      |> unique_constraint([:session_id, :quiz_id])
+    |> unique_constraint([:session_id, :quiz_id])
     |> unique_constraint(:user_id, name: :players_user_id_quiz_id_index)
   end
 end

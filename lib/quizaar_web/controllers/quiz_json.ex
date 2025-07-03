@@ -24,6 +24,7 @@ defmodule QuizaarWeb.QuizJSON do
       user_id: quiz.user_id
     }
   end
+
   def show_full_quiz(%{quiz: quiz, questions: questions}) do
     %{
       data: %{

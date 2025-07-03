@@ -148,10 +148,10 @@ defmodule Quizaar.Quizzes do
   """
   def get_question!(id), do: Repo.get!(Question, id)
 
-
   def get_questions_by_quiz_id(quiz_id) do
-     Repo.all(from q in Question, where: q.quiz_id == ^quiz_id)
+    Repo.all(from q in Question, where: q.quiz_id == ^quiz_id)
   end
+
   @doc """
   Creates a question.
 
@@ -328,9 +328,20 @@ defmodule Quizaar.Quizzes do
   """
   def create_questions(
         quiz_id,
-        config \\ %{"number" => 5, "topic" => "math", "description"=> "none", "difficulty"=> "normal"}
+        config \\ %{
+          "number" => 5,
+          "topic" => "math",
+          "description" => "none",
+          "difficulty" => "normal"
+        }
       ) do
-    %{"number" => number, "topic" => topic, "description"=> description, "difficulty"=> difficulty} = config
+    %{
+      "number" => number,
+      "topic" => topic,
+      "description" => description,
+      "difficulty" => difficulty
+    } = config
+
     {:ok, questions} = generate_questions(number, topic, description, difficulty)
 
     case get_quiz!(quiz_id) do
@@ -419,7 +430,6 @@ defmodule Quizaar.Quizzes do
     if question do
       case handle_question(quiz, question, time_limit) do
         {:ok, res} ->
-
           # Successfully updated the quiz and question
           {:ok, res.question, res.quiz}
 
@@ -674,26 +684,23 @@ defmodule Quizaar.Quizzes do
     end
   end
 
-
   defp check_if_correct(%Question{} = question, user_answer) do
-  cond do
-    # Exact match (normalized)
-    normalize_answer(user_answer) == normalize_answer(question.answer) ->
-      true
+    cond do
+      # Exact match (normalized)
+      normalize_answer(user_answer) == normalize_answer(question.answer) ->
+        true
 
-    # If options exist and answer is not correct, it's simply wrong
-    not Enum.empty?(question.options) ->
-      false
+      # If options exist and answer is not correct, it's simply wrong
+      not Enum.empty?(question.options) ->
+        false
 
-    # Otherwise, fallback to LLM correction
-    true ->
-      {:ok, res} = corrected_by_llm(question.text, user_answer)
-     correct_struct = res["corrected_answer"]
-     correct_struct["correct"]
+      # Otherwise, fallback to LLM correction
+      true ->
+        {:ok, res} = corrected_by_llm(question.text, user_answer)
+        correct_struct = res["corrected_answer"]
+        correct_struct["correct"]
+    end
   end
-end
-
-
 
   @doc """
   Verifies the user's choice for a question and updates the answer and result accordingly.
@@ -752,6 +759,36 @@ end
     |> Repo.transaction()
   end
 
+  def fix_answer_scoring(%Quiz{} = quiz, answer) do
+    import Ecto.Query, only: [from: 2]
+    alias Quizaar.Repo
+    alias Quizaar.Quizzes.Result
+    alias Quizaar.Quizzes.Answer
+  answer = Repo.get!(Answer, answer["id"])
+    score =
+      calculate_score(
+        quiz.question_started_at,
+        answer.inserted_at,
+        quiz.question_time_limit
+      )
+
+    IO.inspect(answer, label: "Got Answer")
+    new_is_correct = !answer.is_correct
+    score_delta = if answer.is_correct, do: -score, else: score
+
+    Multi.new()
+    |> Multi.update(
+      :answer,
+      Answer.changeset(answer, %{is_correct: new_is_correct})
+    )
+    |> Multi.update_all(
+      :result,
+      from(r in Result, where: r.player_id == ^answer.player_id),
+      inc: [score: score_delta]
+    )
+    |> Repo.transaction()
+  end
+
   def get_all_answers_to_current(question_id) do
     import Ecto.Query, only: [from: 2]
     alias Quizaar.Repo
@@ -759,16 +796,15 @@ end
     alias Quizaar.Players.Player
 
     from(a in Answer,
-      join: p in Player, on: a.player_id == p.id,
+      join: p in Player,
+      on: a.player_id == p.id,
       where: a.question_id == ^question_id,
       preload: [player: p]
     )
-
     |> Repo.all()
-
-
   end
- def get_player_score(player_id) do
+
+  def get_player_score(player_id) do
     import Ecto.Query, only: [from: 2]
     alias Quizaar.Repo
     alias Quizaar.Quizzes.Result
@@ -776,35 +812,56 @@ end
     from(r in Result,
       where: r.player_id == ^player_id,
       select: r.score
-
     )
     |> Repo.one()
   end
-def get_player_score_with_neighbours(player_id, quiz_id) do
-  import Ecto.Query, only: [from: 2]
-  alias Quizaar.Repo
-  alias Quizaar.Quizzes.Result
-  alias Quizaar.Players.Player
 
-  # Get all players for this quiz and their scores, sorted descending
-  results =
-    from(p in Player,
-      where: p.quiz_id == ^quiz_id,
-      join: r in Result, on: r.player_id == p.id,
-      order_by: [desc: r.score],
-      select: %{player_id: p.id, score: r.score, name: p.name}
+  def get_player_score_with_neighbours(player_id, quiz_id) do
+    import Ecto.Query, only: [from: 2]
+    alias Quizaar.Repo
+    alias Quizaar.Quizzes.Result
+    alias Quizaar.Players.Player
+
+    # Get all players for this quiz and their scores, sorted descending
+    results =
+      from(p in Player,
+        where: p.quiz_id == ^quiz_id,
+        join: r in Result,
+        on: r.player_id == p.id,
+        order_by: [desc: r.score],
+        select: %{player_id: p.id, score: r.score, name: p.name}
+      )
+      |> Repo.all()
+
+    idx = Enum.find_index(results, fn r -> r.player_id == player_id end)
+
+    higher_player =
+      if idx && idx > 0, do: Enum.at(results, idx - 1), else: %{name: nil, score: nil}
+
+    lower_player =
+      if idx && idx < length(results) - 1,
+        do: Enum.at(results, idx + 1),
+        else: %{name: nil, score: nil}
+
+    player = Enum.at(results, idx)
+
+    %{
+      higher_player: higher_player,
+      player: Map.put(player, :placement, idx + 1),
+      lower_player: lower_player
+    }
+  end
+
+  def list_quizzes_by_user(user_id) do
+    import Ecto.Query, only: [from: 2]
+    alias Quizaar.Repo
+    alias Quizaar.Quizzes.Quiz
+
+    from(q in Quiz,
+      where: q.user_id == ^user_id,
+      order_by: [desc: q.inserted_at],
+      select: q
     )
     |> Repo.all()
-
-  idx = Enum.find_index(results, fn r -> r.player_id == player_id end)
-  higher_player = if idx && idx > 0, do: Enum.at(results, idx - 1), else: %{name: nil, score: nil}
-  lower_player = if idx && idx < length(results) - 1, do: Enum.at(results, idx + 1), else: %{name: nil, score: nil}
-  player = Enum.at(results, idx)
-  %{
-    higher_player: higher_player,
-    player: Map.put(player, :placement, idx + 1),
-    lower_player: lower_player
-  }
-end
-
+  end
 end
