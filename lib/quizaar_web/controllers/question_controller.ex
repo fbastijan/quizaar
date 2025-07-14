@@ -13,7 +13,6 @@ defmodule QuizaarWeb.QuestionController do
 
   def generate_questions(conn, %{"quiz_id" => quiz_id} = params) do
     config = Map.delete(params, "quiz_id")
-
     with {:ok, questions} <- Quizzes.create_questions(quiz_id, config) do
       conn
       |> put_status(:created)

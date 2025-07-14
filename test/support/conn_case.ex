@@ -28,6 +28,7 @@ defmodule QuizaarWeb.ConnCase do
       import Plug.Conn
       import Phoenix.ConnTest
       import QuizaarWeb.ConnCase
+       import Quizaar.Support.DataCase
     end
   end
 

@@ -12,4 +12,14 @@ defmodule Quizaar.Support.DataCase do
   setup _ do
     Ecto.Adapters.SQL.Sandbox.mode(Quizaar.Repo, :manual)
   end
+
+  def setup_sandbox(tags) do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Quizaar.Repo)
+
+    unless tags[:async] do
+      Ecto.Adapters.SQL.Sandbox.mode(Quizaar.Repo, {:shared, self()})
+    end
+
+    :ok
+  end
 end

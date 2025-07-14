@@ -45,7 +45,7 @@ defmodule QuizaarWeb.QuizController do
     end
   end
   def list_quizzes_by_user(conn, _params) do
-    user_id = conn.assigns.account.user.i
+    user_id = conn.assigns.account.user.id
     quizzes = Quizzes.list_quizzes_by_user(user_id)
     render(conn, :index, quizzes: quizzes)
   end

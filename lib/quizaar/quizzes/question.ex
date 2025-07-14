@@ -9,7 +9,7 @@ defmodule Quizaar.Quizzes.Question do
     field :options, {:array, :string}
     field :text, :string
     field :answer, :string
-    field :used, :boolean, default: false
+    field :used, :boolean
     belongs_to :quiz, Quizaar.Quizzes.Quiz
     has_many :answers, Quizaar.Quizzes.Answer
     timestamps(type: :utc_datetime)

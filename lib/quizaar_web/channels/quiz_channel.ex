@@ -44,7 +44,7 @@ defmodule QuizaarWeb.QuizChannel do
           token ->
             case authorized(token, socket) do
               {:ok, socket} ->
-                role = if socket.assigns.account.user.id == quiz.user_id, do: "organizer"
+                role = if socket.assigns.account.user.id == quiz.user_id, do: "organizer", else: "player"
 
                 player =
                   Players.get_player_by_user_and_quiz(socket.assigns.account.user.id, quiz.id)
@@ -110,7 +110,7 @@ defmodule QuizaarWeb.QuizChannel do
           socket
 
         question_id ->
-          case Quizzes.get_question!(question_id) do
+          case Quizzes.get_question(question_id) do
             nil ->
               socket
 
@@ -241,8 +241,8 @@ defmodule QuizaarWeb.QuizChannel do
       push(socket, "players_list", %{players: player_list})
       {:reply, {:ok, %{players: player_list}}, socket}
     else
-      push(socket, "error", %{message: "You are not authorized to get players"})
-      {:noreply, socket}
+
+      {:reply, {:error, %{message: "You are not authorized to get players"}}, socket}
     end
   end
 
@@ -262,16 +262,16 @@ defmodule QuizaarWeb.QuizChannel do
         {:ok, _questions} ->
           # Handle the successful response
           push(socket, "questions_generated", %{questions: "questions"})
-          {:noreply, socket}
+          {:reply, {:ok, %{"message" => "Questions generated successfully"}},socket}
 
         {:error, reason} ->
           # Handle the error response
-          push(socket, "error", %{message: reason})
-          {:noreply, socket}
+
+          {:reply, {:error, reason}, socket}
       end
     else
-      push(socket, "error", %{message: "You are not authorized to generate questions"})
-      {:noreply, socket}
+
+      {:reply, {:error, %{message: "You are not authorized to generate questions"}}, socket}
     end
   end
 
@@ -312,7 +312,7 @@ defmodule QuizaarWeb.QuizChannel do
           nil
         end
 
-      IO.inspect(question, label: "Question in answer_question")
+
       player = socket.assigns.player
       expired = socket.assigns[:question_closed] || false
 
@@ -323,7 +323,7 @@ defmodule QuizaarWeb.QuizChannel do
         quiz = Quizzes.get_quiz!(socket.assigns.quiz.id)
         answer = payload["answer"]
 
-        case Quizzes.verify_choice(question, quiz, player.id, answer) do
+        case Quizzes.answer_and_score(question, quiz, player.id, answer) do
           {:ok, %{result: result, answer: answer}} ->
             # Handle the successful response
 
@@ -411,8 +411,8 @@ defmodule QuizaarWeb.QuizChannel do
 
       {:reply, {:ok, %{players: player_stats}}, socket}
     else
-      push(socket, "error", %{message: "You are not authorized to get player stats"})
-      {:noreply, socket}
+
+      {:reply, {:error, %{message: "You are not authorized to get player stats"}}, socket}
     end
   end
 
@@ -478,24 +478,24 @@ defmodule QuizaarWeb.QuizChannel do
               time_left: time_left(quiz)
             }}, socket}
 
-        {:error, :end, _reason} ->
-          # Handle the end of the quiz
+        {:error, :end, reason} ->
+
           broadcast!(socket, "quiz_ended", %{message: "Quiz has ended"})
-          {:noreply, socket}
+          {:reply, {:error, reason}, socket}
 
         {:error, reason} ->
-          # Handle the error response
-          push(socket, "error", %{message: reason})
-          {:noreply, socket}
+
+
+          {:reply, {:error, reason}, socket}
       end
     else
-      push(socket, "error", %{message: "You are not authorized to serve questions"})
-      {:noreply, socket}
+
+      {:reply, {:error, %{message: "You are not authorized to serve questions"}}, socket}
     end
   end
 
   def handle_in("ready_up", _payload, socket) do
-    if socket.assigns.role == "organizer" || "player" do
+    if socket.assigns.role ==  "player" do
       quiz = socket.assigns.quiz
 
       presence_key =
@@ -506,11 +506,11 @@ defmodule QuizaarWeb.QuizChannel do
         end
 
       Presence.update(socket, presence_key, %{ready: true})
-
-      {:noreply, socket}
+      push(socket, "presence_update", Presence.list(socket))
+      {:reply, {:ok, %{"message" => "You are ready"} }, socket}
     else
-      push(socket, "error", %{message: "You are not authorized to ready up"})
-      {:noreply, socket}
+
+      {:reply, {:error, %{message: "Only players can ready up"}}, socket}
     end
   end
 
@@ -527,11 +527,10 @@ defmodule QuizaarWeb.QuizChannel do
         end
 
       Presence.update(socket, presence_key, %{ready: false})
-      push(socket, "presence_state", Presence.list(socket))
-      {:noreply, socket}
+      push(socket, "presence_update", Presence.list(socket))
+      {:reply, {:ok, %{"message" => "You are no longer ready"} }, socket}
     else
-      push(socket, "error", %{message: "You are not authorized to unready"})
-      {:noreply, socket}
+       {:reply, {:error, %{message: "Only players can unready"}}, socket}
     end
   end
 
@@ -570,90 +569,64 @@ defmodule QuizaarWeb.QuizChannel do
       case check_if_all_players_ready(socket) do
         {:ok, socket} ->
           broadcast!(socket, "quiz_start", %{message: "Quiz is starting!"})
-          # Optionally, serve the first question here
           handle_in("serve_question", %{}, socket)
 
         {:error, :not_ready} ->
-          push(socket, "error", %{message: "Not all players are ready"})
-          {:noreply, socket}
+
+          {:reply, {:error, %{message: "Not all players are ready"}}, socket}
       end
     else
-      push(socket, "error", %{message: "You are not authorized to start the quiz"})
-      {:noreply, socket}
+
+      {:reply, {:error, %{message: "You are not authorized to start the quiz"}}, socket}
     end
   end
 
-  def handle_in("", _payload, socket) do
-  end
 
   @impl true
+
 
   def handle_in("delete_player", payload, socket) do
     if socket.assigns.role == "organizer" do
       player_id = payload["player_id"]
 
-      case Players.get_player!(player_id) do
+      case Players.get_player(player_id) do
         nil ->
           # Handle the error response
-          push(socket, "error", %{message: "Player not found"})
-          {:noreply, socket}
+
+          {:reply, {:error, %{message: "Player not found to delete"}}, socket}
 
         player ->
           {:ok, player} = Players.delete_player(player)
 
-          player2 = %{
+          player_ref = %{
             id: player.id,
             name: player.name,
             session_id: player.session_id,
             user_id: player.user_id
           }
 
-          {:reply, {:ok, %{player: player2}}, socket}
+          {:reply, {:ok, %{player: player_ref}}, socket}
       end
     else
-      push(socket, "error", %{message: "You are not authorized to delete players"})
-      {:noreply, socket}
+
+      {:reply, { :error, %{message: "You are not authorized to delete players"}},socket}
     end
   end
 
-  # @imp true
-  # def handle_in("add_player", payload, socket) do
-  #   IO.inspect(socket)
-  #   if socket.assigns.role == "organizer" do
-  #     quiz_id = socket.assigns.quiz_id
-  #     user_id = payload["user_id"]
-  #     case Players.create_player(%{quiz_id, user_id})do
-  #      {:ok, player} ->
-  #         # Handle the successful response
-  #         push(socket, "player_added", %{player: player})
-  #         {:noreply, socket}
-  #       {:error, reason} ->
-  #         # Handle the error response
-  #         push(socket, "error", %{message: reason})
-  #         {:noreply, socket}
-  #     end
-  #   else
-  #     push(socket, "error", %{message: "You are not authorized to add players"})
-  #       {:noreply, socket}
-  #   end
-  #  end
 
-  # Channels can be used in a request/response fashion
-  # by sending replies to requests from the client
   @impl true
   def handle_in("ping", payload, socket) do
     {:reply, {:ok, payload}, socket}
   end
 
-  # It is also common to receive messages from the client and
-  # broadcast to everyone in the current topic (quiz:lobby).
+
   @impl true
   def handle_in("shout", payload, socket) do
     broadcast(socket, "shout", payload)
     {:noreply, socket}
   end
 
-  # Add authorization logic here as required.
+
   defp authorized(token, socket) do
     case Guardian.decode_and_verify(token) do
       {:ok, claims} ->

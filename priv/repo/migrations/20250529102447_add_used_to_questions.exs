@@ -3,7 +3,7 @@ defmodule Quizaar.Repo.Migrations.AddUsedToQuestions do
 
   def change do
     alter table(:questions) do
-      add :used, :boolean, default: false, null: false
+      add :used, :boolean, default: false
     end
   end
 end

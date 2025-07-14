@@ -22,14 +22,14 @@ defmodule QuizaarWeb.ChannelCase do
       # Import conveniences for testing with channels
       import Phoenix.ChannelTest
       import QuizaarWeb.ChannelCase
-
+      import Quizaar.Support.DataCase
       # The default endpoint for testing
       @endpoint QuizaarWeb.Endpoint
     end
   end
 
   setup tags do
-    Quizaar.DataCase.setup_sandbox(tags)
+   Quizaar.Support.DataCase.setup_sandbox(tags)
     :ok
   end
 end

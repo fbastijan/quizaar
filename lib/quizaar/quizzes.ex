@@ -147,7 +147,7 @@ defmodule Quizaar.Quizzes do
 
   """
   def get_question!(id), do: Repo.get!(Question, id)
-
+  def get_question(id), do: Repo.get(Question, id)
   def get_questions_by_quiz_id(quiz_id) do
     Repo.all(from q in Question, where: q.quiz_id == ^quiz_id)
   end
@@ -216,7 +216,7 @@ defmodule Quizaar.Quizzes do
 
     case Finch.request(request, Quizaar.Finch) do
       {:ok, %Finch.Response{status: 200, body: response_body}} ->
-        IO.inspect(response_body, label: "Raw Response Body")
+
 
         case Jason.decode(response_body) do
           {:ok, decoded_body} -> {:ok, decoded_body}
@@ -224,11 +224,11 @@ defmodule Quizaar.Quizzes do
         end
 
       {:ok, %Finch.Response{status: status_code, body: error_body}} ->
-        IO.inspect(error_body, label: "Error Response Body")
+
         {:error, {:http_error, status_code, error_body}}
 
       {:error, reason} ->
-        IO.inspect(reason, label: "Request Error")
+
         {:error, {:request_error, reason}}
     end
   end
@@ -285,24 +285,39 @@ defmodule Quizaar.Quizzes do
       {:ok, %{"questionsAnswers" => [%{"question" => "What is H2O?", "answer" => "Water"}]}}
   """
   def generate_questions(number, topic, context \\ "none", difficulty \\ "normal") do
-    {:ok, prompt} = read_prompt("lib/Prompt1.txt")
+  do_generate_questions(number, topic, context, difficulty, 0, 5)
+end
 
-    updated_prompt =
-      String.replace(prompt, ~r/%{number_of_questions}/, Integer.to_string(number))
-      |> String.replace(~r/%{topic}/, topic)
-      |> String.replace(~r/%{context}/, context)
-      |> String.replace(~r/%{difficulty}/, difficulty)
+defp do_generate_questions(number, topic, context, difficulty, attempt, max_attempts) when attempt < max_attempts do
+  {:ok, prompt} = read_prompt("lib/Prompt1.txt")
 
-    {:ok, res} = query_llm(updated_prompt)
+  updated_prompt =
+    String.replace(prompt, ~r/%{number_of_questions}/, Integer.to_string(number))
+    |> String.replace(~r/%{topic}/, topic)
+    |> String.replace(~r/%{context}/, context)
+    |> String.replace(~r/%{difficulty}/, difficulty)
 
+  case query_llm(updated_prompt)do
+
+   {:ok, res} ->
     case res["choices"] do
-      [%{"message" => %{"content" => content}} | _] ->
-        Jason.decode(content)
+    [%{"message" => %{"content" => content}} | _] ->
+      case Jason.decode(content) do
+        {:ok, json} -> {:ok, json}
+        _ -> do_generate_questions(number, topic, context, difficulty, attempt + 1, max_attempts)
+      end
 
-      _ ->
-        {:error, "Unexpected response format"}
-    end
+    _ ->
+      do_generate_questions(number, topic, context, difficulty, attempt + 1, max_attempts)
   end
+  {:error, _reason} ->
+    do_generate_questions(number, topic, context, difficulty, attempt + 1, max_attempts)
+end
+end
+
+defp do_generate_questions(_number, _topic, _context, _difficulty, _attempt, max_attempts) do
+  {:error, "Failed to get valid JSON after #{max_attempts} attempts"}
+end
 
   @doc """
   Creates a list of questions based on the provided parameters.
@@ -327,40 +342,53 @@ defmodule Quizaar.Quizzes do
 
   """
   def create_questions(
-        quiz_id,
-        config \\ %{
-          "number" => 5,
-          "topic" => "math",
-          "description" => "none",
-          "difficulty" => "normal"
-        }
-      ) do
-    %{
-      "number" => number,
-      "topic" => topic,
-      "description" => description,
-      "difficulty" => difficulty
-    } = config
-
-    {:ok, questions} = generate_questions(number, topic, description, difficulty)
-
-    case get_quiz!(quiz_id) do
-      nil ->
-        {:error, "Quiz not found"}
-
-      _ ->
-        questions =
-          questions["questionsAnswers"]
-          |> Enum.map(fn attrs ->
-            attrs = Map.put_new(attrs, "quiz_id", quiz_id)
-
-            %Question{}
-            |> Question.changeset(attrs)
-            |> Repo.insert()
-          end)
-
-        {:ok, questions}
+      quiz_id,
+      config \\ %{
+        "number" => 5,
+        "topic" => "math",
+        "description" => "none",
+        "difficulty" => "normal"
+      },
+      generator \\ &__MODULE__.generate_questions/4
+    ) do
+  config =
+    for {k, v} <- config, into: %{} do
+      {if(is_atom(k), do: k, else: String.to_atom(k)), v}
     end
+
+  %{
+    number: number,
+    topic: topic,
+    description: description,
+    difficulty: difficulty
+  } = config
+
+  case generator.(number, topic, description, difficulty) do
+    {:ok, questions} ->
+      case get_quiz!(quiz_id) do
+        nil ->
+          {:error, "Quiz not found"}
+
+        _ ->
+          questions =
+            questions["questionsAnswers"]
+            |> Enum.map(fn attrs ->
+              attrs = Map.put_new(attrs, "quiz_id", quiz_id)
+
+              %Question{}
+              |> Question.changeset(attrs)
+              |> Repo.insert()
+            end)
+
+          {:ok, questions}
+          end
+    {:error, reason} ->
+
+      {:error, reason}
+
+
+
+end
   end
 
   @doc """
@@ -696,9 +724,12 @@ defmodule Quizaar.Quizzes do
 
       # Otherwise, fallback to LLM correction
       true ->
-        {:ok, res} = corrected_by_llm(question.text, user_answer)
-        correct_struct = res["corrected_answer"]
-        correct_struct["correct"]
+
+        case  corrected_by_llm(question.text, user_answer) do
+       {:ok, res}-> correct_struct = res["corrected_answer"]
+                    correct_struct["correct"]
+        {:error, _} -> false
+        end
     end
   end
 
@@ -718,10 +749,10 @@ defmodule Quizaar.Quizzes do
 
   ## Examples
 
-      iex> verify_choice(question, quiz, player_id, "User's answer")
+      iex> answer_and_score(question, quiz, player_id, "User's answer")
       {:ok, %Answer{}, %Result{}}
   """
-  def verify_choice(%Question{} = question, %Quiz{} = quiz, player_id, user_answer) do
+  def answer_and_score(%Question{} = question, %Quiz{} = quiz, player_id, user_answer) do
     a_attrs = %{
       text: user_answer,
       question_id: question.id,
@@ -764,7 +795,15 @@ defmodule Quizaar.Quizzes do
     alias Quizaar.Repo
     alias Quizaar.Quizzes.Result
     alias Quizaar.Quizzes.Answer
-  answer = Repo.get!(Answer, answer["id"])
+
+     answer_id =
+    cond do
+      is_map(answer) and Map.has_key?(answer, "id") -> answer["id"]
+      is_struct(answer) and Map.has_key?(answer, :id) -> answer.id
+      true -> raise ArgumentError, "answer must have an id"
+    end
+
+  answer = Repo.get!(Answer, answer_id)
     score =
       calculate_score(
         quiz.question_started_at,
@@ -772,14 +811,13 @@ defmodule Quizaar.Quizzes do
         quiz.question_time_limit
       )
 
-    IO.inspect(answer, label: "Got Answer")
-    new_is_correct = !answer.is_correct
+
     score_delta = if answer.is_correct, do: -score, else: score
 
     Multi.new()
     |> Multi.update(
       :answer,
-      Answer.changeset(answer, %{is_correct: new_is_correct})
+      Answer.changeset(answer, %{is_correct: !answer.is_correct})
     )
     |> Multi.update_all(
       :result,

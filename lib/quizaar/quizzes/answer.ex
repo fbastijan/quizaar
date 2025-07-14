@@ -6,7 +6,7 @@ defmodule Quizaar.Quizzes.Answer do
   @foreign_key_type :binary_id
   schema "answers" do
     field :text, :string
-    field :is_correct, :boolean, default: false
+    field :is_correct, :boolean
     belongs_to :question, Quizaar.Quizzes.Question
     belongs_to :player, Quizaar.Players.Player
     timestamps(type: :utc_datetime)
