@@ -1,0 +1,46 @@
+name: Test before deploy
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions: 
+  contents: read
+jobs: 
+  test: 
+      runs-on: ubuntu-22.04
+      services:
+        postgres:
+          image: postgres:13
+          ports:
+            - 5432:5432
+          env:
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: 12345679
+            POSTGRES_DB: Quizaar_test
+      steps:
+      - uses: actions/checkout@v4
+  
+      - name: Set up Elixir
+        uses: erlef/setup-beam@61e01a43a562a89bfc54c7f9a378ff67b03e4a21
+        with:
+          elixir-version: '1.17'
+          otp-version: '27.0'
+  
+      - name: Set environment variables
+        run: echo "DB_HOST=localhost" >> $GITHUB_ENV
+  
+      - name: Install dependencies
+        run: mix deps.get
+  
+      - name: Set up database
+        env:
+          MIX_ENV: test
+        run: |
+          mix ecto.create
+          mix ecto.migrate
+      - name: Run tests
+        env:
+          MIX_ENV: test
+        run: mix test
