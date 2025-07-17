@@ -35,7 +35,7 @@ defmodule QuizaarWeb.QuizChannelTest do
       assert socket.assigns.account.id == account.id
       assert socket.assigns.account.user.id == user.id
       assert socket.assigns.role == "organizer"
-      assert socket.assigns.quiz_id == quiz.id
+      assert socket.assigns.quiz.id == quiz.id
       assert socket.assigns.join_code == quiz.join_code
     end
 
@@ -59,7 +59,7 @@ defmodule QuizaarWeb.QuizChannelTest do
       assert socket.assigns.role == "player"
       assert socket.assigns.account.id == account.id
       assert socket.assigns.account.user.id == user.id
-      assert socket.assigns.quiz_id == quiz.id
+      assert socket.assigns.quiz.id == quiz.id
       assert socket.assigns.join_code == quiz.join_code
 
       # checks if player was inserted to db
