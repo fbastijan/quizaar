@@ -46,6 +46,7 @@ defmodule Quizaar.Schema.QuizTest do
       for {field, _} <- @expected_fields_with_types do
         actual = Map.get(changes, field)
         expected = valid_params[Atom.to_string(field)]
+
         assert actual == expected,
                "Values did not match for field: #{field}\n expected: #{inspect(expected)} \n actual: #{inspect(actual)} "
       end
@@ -53,11 +54,14 @@ defmodule Quizaar.Schema.QuizTest do
 
     test "error: returns an error changeset when given un-castable values" do
       invalid_params = invalid_params(@expected_fields_with_types)
-      assert %Ecto.Changeset{valid?: false, errors: errors} = Quiz.changeset(%Quiz{}, invalid_params)
+
+      assert %Ecto.Changeset{valid?: false, errors: errors} =
+               Quiz.changeset(%Quiz{}, invalid_params)
 
       for {field, _} <- @expected_fields_with_types do
         assert errors[field], "The field: #{field} is missing from errors"
         {_, meta} = errors[field]
+
         assert meta[:validation] == :cast,
                "The validation type, #{meta[:validation]}, is incorrect"
       end
@@ -65,11 +69,14 @@ defmodule Quizaar.Schema.QuizTest do
 
     test "error: returns an error changeset when required is missing" do
       invalid_params = %{}
-      assert %Ecto.Changeset{valid?: false, errors: errors} = Quiz.changeset(%Quiz{}, invalid_params)
+
+      assert %Ecto.Changeset{valid?: false, errors: errors} =
+               Quiz.changeset(%Quiz{}, invalid_params)
 
       for {field, _} <- @expected_fields_with_types, field not in @optional do
         assert errors[field], "The field: #{field} is missing from errors"
         {_, meta} = errors[field]
+
         assert meta[:validation] == :required,
                "The validation type, #{meta[:validation]}, is incorrect"
       end

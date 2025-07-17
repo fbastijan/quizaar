@@ -21,17 +21,18 @@ defmodule Quizaar.Support.Factory do
       account: build(:account)
     }
   end
+
   def quiz_factory do
-     user = insert(:user)
+    user = insert(:user)
 
     %Quiz{
       title: Faker.Lorem.sentence(),
       description: Faker.Lorem.paragraph(2..5),
-     user: user,
-    user_id: user.id
-
+      user: user,
+      user_id: user.id
     }
   end
+
   def question_factory do
     %Quizaar.Quizzes.Question{
       text: Faker.Lorem.sentence(),
@@ -40,8 +41,8 @@ defmodule Quizaar.Support.Factory do
       used: false,
       quiz: build(:quiz)
     }
-
   end
+
   def player_factory do
     %Quizaar.Players.Player{
       user: build(:user),

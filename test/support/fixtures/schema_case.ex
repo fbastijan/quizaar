@@ -10,8 +10,9 @@ defmodule Quizaar.Support.SchemaCase do
 
   def valid_params(fields_with_types) do
     valid_value_by_type = %{
-
-      {:array, :string} => fn -> Enum.map(1..Enum.random(1..5), fn _ -> Faker.Lorem.word() end) end,
+      {:array, :string} => fn ->
+        Enum.map(1..Enum.random(1..5), fn _ -> Faker.Lorem.word() end)
+      end,
       {:array, Ecto.UUID} => fn -> Enum.map(1..Enum.random(1..5), fn _ -> Faker.UUID.v4() end) end,
       binary_id: fn -> Faker.UUID.v4() end,
       string: fn -> Faker.Lorem.word() end,
@@ -32,12 +33,11 @@ defmodule Quizaar.Support.SchemaCase do
 
   def invalid_params(fields_with_types) do
     valid_value_by_type = %{
-          {:array, :string} => fn ->
+      {:array, :string} => fn ->
         Enum.map(1..Enum.random(1..5), fn _ ->
           Faker.DateTime.backward(Enum.random(0..100)) |> DateTime.truncate(:second)
         end)
       end,
-
       {:array, Ecto.UUID} => fn ->
         Enum.map(1..Enum.random(1..5), fn _ ->
           Faker.DateTime.backward(Enum.random(0..100)) |> DateTime.truncate(:second)

@@ -50,7 +50,9 @@ defmodule Quizaar.Schema.UserTest do
 
     test "error: returns an error changeset when given un-castable values" do
       invalid_params = invalid_params(@expected_fields_with_types)
-      assert %Ecto.Changeset{valid?: false, errors: errors} = User.changeset(%User{}, invalid_params)
+
+      assert %Ecto.Changeset{valid?: false, errors: errors} =
+               User.changeset(%User{}, invalid_params)
 
       for {field, _} <- @expected_fields_with_types do
         assert errors[field], "The field: #{field} is missing from errors"
@@ -64,7 +66,9 @@ defmodule Quizaar.Schema.UserTest do
 
     test "error: returns an error changeset when required is missing" do
       invalid_params = %{}
-      assert %Ecto.Changeset{valid?: false, errors: errors} = User.changeset(%User{}, invalid_params)
+
+      assert %Ecto.Changeset{valid?: false, errors: errors} =
+               User.changeset(%User{}, invalid_params)
 
       for {field, _} <- @expected_fields_with_types, field not in @optional do
         assert errors[field], "The field: #{field} is missing from errors"

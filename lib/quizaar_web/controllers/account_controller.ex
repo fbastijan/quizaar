@@ -80,16 +80,15 @@ defmodule QuizaarWeb.AccountController do
     render(conn, :show_full_account, account: account)
   end
 
-  def update(conn, %{"current_hash" => current_hash, "account" => account_params }) do
-
+  def update(conn, %{"current_hash" => current_hash, "account" => account_params}) do
     case Guardian.validate_password(current_hash, conn.assigns.account.hash_password) do
       true ->
         {:ok, account} = Accounts.update_account(conn.assigns.account, account_params)
-      render(conn, :show_full_account, account: account)
+        render(conn, :show_full_account, account: account)
+
       false ->
         raise ErrorResponse.Unauthorized, message: "Current password is incorrect."
-      end
-
+    end
   end
 
   def delete(conn, %{"id" => id}) do

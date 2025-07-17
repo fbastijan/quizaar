@@ -3,8 +3,13 @@ defmodule QuizaarWeb.UserController do
 
   alias Quizaar.Users
   alias Quizaar.Users.User
+  alias QuizaarWeb.Accounts.Account
+  alias QuizarWeb.Accounts
 
   action_fallback QuizaarWeb.FallbackController
+  import QuizaarWeb.Auth.AuthorizedPlug
+
+  plug :is_authorized when action in [:update, :delete]
 
   def index(conn, _params) do
     users = Users.list_users()
@@ -24,8 +29,8 @@ defmodule QuizaarWeb.UserController do
     render(conn, :show, user: user)
   end
 
-  def update(conn, %{"id" => id, "user" => user_params}) do
-    user = Users.get_user!(id)
+  def update(conn, %{"user" => user_params}) do
+    user = conn.assigns.account.user
 
     with {:ok, %User{} = user} <- Users.update_user(user, user_params) do
       render(conn, :show, user: user)

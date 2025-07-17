@@ -37,8 +37,8 @@ defmodule Quizaar.Players do
   """
   def get_player!(id), do: Repo.get!(Player, id)
 
-
   def get_player(id), do: Repo.get(Player, id)
+
   @doc """
   Creates a player.
 

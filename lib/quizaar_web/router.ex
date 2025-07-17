@@ -42,6 +42,7 @@ defmodule QuizaarWeb.Router do
     get "/accounts/current", AccountController, :current_account
     get "/accounts/by_id/:id", AccountController, :show
     patch "/accounts/update", AccountController, :update
+    patch "/users/update", UserController, :update
     post "/accounts/refresh_session", AccountController, :refresh_session
     post "/quizzes/create", QuizController, :create
     post "/quizzes/:quiz_id/generate_questions", QuestionController, :generate_questions
@@ -52,6 +53,5 @@ defmodule QuizaarWeb.Router do
     delete "/questions/:id", QuestionController, :delete
 
     get "/quizzes/list/user", QuizController, :list_quizzes_by_user
-
   end
 end

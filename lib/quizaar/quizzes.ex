@@ -148,6 +148,7 @@ defmodule Quizaar.Quizzes do
   """
   def get_question!(id), do: Repo.get!(Question, id)
   def get_question(id), do: Repo.get(Question, id)
+
   def get_questions_by_quiz_id(quiz_id) do
     Repo.all(from q in Question, where: q.quiz_id == ^quiz_id)
   end
@@ -216,19 +217,15 @@ defmodule Quizaar.Quizzes do
 
     case Finch.request(request, Quizaar.Finch) do
       {:ok, %Finch.Response{status: 200, body: response_body}} ->
-
-
         case Jason.decode(response_body) do
           {:ok, decoded_body} -> {:ok, decoded_body}
           {:error, decode_error} -> {:error, {:decode_error, decode_error}}
         end
 
       {:ok, %Finch.Response{status: status_code, body: error_body}} ->
-
         {:error, {:http_error, status_code, error_body}}
 
       {:error, reason} ->
-
         {:error, {:request_error, reason}}
     end
   end
@@ -285,39 +282,50 @@ defmodule Quizaar.Quizzes do
       {:ok, %{"questionsAnswers" => [%{"question" => "What is H2O?", "answer" => "Water"}]}}
   """
   def generate_questions(number, topic, context \\ "none", difficulty \\ "normal") do
-  do_generate_questions(number, topic, context, difficulty, 0, 5)
-end
-
-defp do_generate_questions(number, topic, context, difficulty, attempt, max_attempts) when attempt < max_attempts do
-  {:ok, prompt} = read_prompt("lib/Prompt1.txt")
-
-  updated_prompt =
-    String.replace(prompt, ~r/%{number_of_questions}/, Integer.to_string(number))
-    |> String.replace(~r/%{topic}/, topic)
-    |> String.replace(~r/%{context}/, context)
-    |> String.replace(~r/%{difficulty}/, difficulty)
-
-  case query_llm(updated_prompt)do
-
-   {:ok, res} ->
-    case res["choices"] do
-    [%{"message" => %{"content" => content}} | _] ->
-      case Jason.decode(content) do
-        {:ok, json} -> {:ok, json}
-        _ -> do_generate_questions(number, topic, context, difficulty, attempt + 1, max_attempts)
-      end
-
-    _ ->
-      do_generate_questions(number, topic, context, difficulty, attempt + 1, max_attempts)
+    do_generate_questions(number, topic, context, difficulty, 0, 5)
   end
-  {:error, _reason} ->
-    do_generate_questions(number, topic, context, difficulty, attempt + 1, max_attempts)
-end
-end
 
-defp do_generate_questions(_number, _topic, _context, _difficulty, _attempt, max_attempts) do
-  {:error, "Failed to get valid JSON after #{max_attempts} attempts"}
-end
+  defp do_generate_questions(number, topic, context, difficulty, attempt, max_attempts)
+       when attempt < max_attempts do
+    {:ok, prompt} = read_prompt("lib/Prompt1.txt")
+
+    updated_prompt =
+      String.replace(prompt, ~r/%{number_of_questions}/, Integer.to_string(number))
+      |> String.replace(~r/%{topic}/, topic)
+      |> String.replace(~r/%{context}/, context)
+      |> String.replace(~r/%{difficulty}/, difficulty)
+
+    case query_llm(updated_prompt) do
+      {:ok, res} ->
+        case res["choices"] do
+          [%{"message" => %{"content" => content}} | _] ->
+            case Jason.decode(content) do
+              {:ok, json} ->
+                {:ok, json}
+
+              _ ->
+                do_generate_questions(
+                  number,
+                  topic,
+                  context,
+                  difficulty,
+                  attempt + 1,
+                  max_attempts
+                )
+            end
+
+          _ ->
+            do_generate_questions(number, topic, context, difficulty, attempt + 1, max_attempts)
+        end
+
+      {:error, _reason} ->
+        do_generate_questions(number, topic, context, difficulty, attempt + 1, max_attempts)
+    end
+  end
+
+  defp do_generate_questions(_number, _topic, _context, _difficulty, _attempt, max_attempts) do
+    {:error, "Failed to get valid JSON after #{max_attempts} attempts"}
+  end
 
   @doc """
   Creates a list of questions based on the provided parameters.
@@ -342,53 +350,50 @@ end
 
   """
   def create_questions(
-      quiz_id,
-      config \\ %{
-        "number" => 5,
-        "topic" => "math",
-        "description" => "none",
-        "difficulty" => "normal"
-      },
-      generator \\ &__MODULE__.generate_questions/4
-    ) do
-  config =
-    for {k, v} <- config, into: %{} do
-      {if(is_atom(k), do: k, else: String.to_atom(k)), v}
+        quiz_id,
+        config \\ %{
+          "number" => 5,
+          "topic" => "math",
+          "description" => "none",
+          "difficulty" => "normal"
+        },
+        generator \\ &__MODULE__.generate_questions/4
+      ) do
+    config =
+      for {k, v} <- config, into: %{} do
+        {if(is_atom(k), do: k, else: String.to_atom(k)), v}
+      end
+
+    %{
+      number: number,
+      topic: topic,
+      description: description,
+      difficulty: difficulty
+    } = config
+
+    case generator.(number, topic, description, difficulty) do
+      {:ok, questions} ->
+        case get_quiz!(quiz_id) do
+          nil ->
+            {:error, "Quiz not found"}
+
+          _ ->
+            questions =
+              questions["questionsAnswers"]
+              |> Enum.map(fn attrs ->
+                attrs = Map.put_new(attrs, "quiz_id", quiz_id)
+
+                %Question{}
+                |> Question.changeset(attrs)
+                |> Repo.insert()
+              end)
+
+            {:ok, questions}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
     end
-
-  %{
-    number: number,
-    topic: topic,
-    description: description,
-    difficulty: difficulty
-  } = config
-
-  case generator.(number, topic, description, difficulty) do
-    {:ok, questions} ->
-      case get_quiz!(quiz_id) do
-        nil ->
-          {:error, "Quiz not found"}
-
-        _ ->
-          questions =
-            questions["questionsAnswers"]
-            |> Enum.map(fn attrs ->
-              attrs = Map.put_new(attrs, "quiz_id", quiz_id)
-
-              %Question{}
-              |> Question.changeset(attrs)
-              |> Repo.insert()
-            end)
-
-          {:ok, questions}
-          end
-    {:error, reason} ->
-
-      {:error, reason}
-
-
-
-end
   end
 
   @doc """
@@ -724,11 +729,13 @@ end
 
       # Otherwise, fallback to LLM correction
       true ->
+        case corrected_by_llm(question.text, user_answer) do
+          {:ok, res} ->
+            correct_struct = res["corrected_answer"]
+            correct_struct["correct"]
 
-        case  corrected_by_llm(question.text, user_answer) do
-       {:ok, res}-> correct_struct = res["corrected_answer"]
-                    correct_struct["correct"]
-        {:error, _} -> false
+          {:error, _} ->
+            false
         end
     end
   end
@@ -796,21 +803,21 @@ end
     alias Quizaar.Quizzes.Result
     alias Quizaar.Quizzes.Answer
 
-     answer_id =
-    cond do
-      is_map(answer) and Map.has_key?(answer, "id") -> answer["id"]
-      is_struct(answer) and Map.has_key?(answer, :id) -> answer.id
-      true -> raise ArgumentError, "answer must have an id"
-    end
+    answer_id =
+      cond do
+        is_map(answer) and Map.has_key?(answer, "id") -> answer["id"]
+        is_struct(answer) and Map.has_key?(answer, :id) -> answer.id
+        true -> raise ArgumentError, "answer must have an id"
+      end
 
-  answer = Repo.get!(Answer, answer_id)
+    answer = Repo.get!(Answer, answer_id)
+
     score =
       calculate_score(
         quiz.question_started_at,
         answer.inserted_at,
         quiz.question_time_limit
       )
-
 
     score_delta = if answer.is_correct, do: -score, else: score
 

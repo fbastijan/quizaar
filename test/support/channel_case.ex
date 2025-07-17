@@ -29,7 +29,7 @@ defmodule QuizaarWeb.ChannelCase do
   end
 
   setup tags do
-   Quizaar.Support.DataCase.setup_sandbox(tags)
+    Quizaar.Support.DataCase.setup_sandbox(tags)
     :ok
   end
 end

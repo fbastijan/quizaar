@@ -44,7 +44,10 @@ defmodule QuizaarWeb.QuizChannel do
           token ->
             case authorized(token, socket) do
               {:ok, socket} ->
-                role = if socket.assigns.account.user.id == quiz.user_id, do: "organizer", else: "player"
+                role =
+                  if socket.assigns.account.user.id == quiz.user_id,
+                    do: "organizer",
+                    else: "player"
 
                 player =
                   Players.get_player_by_user_and_quiz(socket.assigns.account.user.id, quiz.id)
@@ -241,7 +244,6 @@ defmodule QuizaarWeb.QuizChannel do
       push(socket, "players_list", %{players: player_list})
       {:reply, {:ok, %{players: player_list}}, socket}
     else
-
       {:reply, {:error, %{message: "You are not authorized to get players"}}, socket}
     end
   end
@@ -262,7 +264,7 @@ defmodule QuizaarWeb.QuizChannel do
         {:ok, _questions} ->
           # Handle the successful response
           push(socket, "questions_generated", %{questions: "questions"})
-          {:reply, {:ok, %{"message" => "Questions generated successfully"}},socket}
+          {:reply, {:ok, %{"message" => "Questions generated successfully"}}, socket}
 
         {:error, reason} ->
           # Handle the error response
@@ -270,7 +272,6 @@ defmodule QuizaarWeb.QuizChannel do
           {:reply, {:error, reason}, socket}
       end
     else
-
       {:reply, {:error, %{message: "You are not authorized to generate questions"}}, socket}
     end
   end
@@ -312,7 +313,6 @@ defmodule QuizaarWeb.QuizChannel do
           nil
         end
 
-
       player = socket.assigns.player
       expired = socket.assigns[:question_closed] || false
 
@@ -346,27 +346,31 @@ defmodule QuizaarWeb.QuizChannel do
     if socket.assigns.role == "organizer" do
       answer = payload["answer"]
       quiz = socket.assigns.quiz
+
       if answer do
-        case Quizzes.fix_answer_scoring( quiz, answer) do
+        case Quizzes.fix_answer_scoring(quiz, answer) do
           {:ok, %{answer: fixed_answer, result: _result}} ->
             broadcast!(socket, "answer_received", %{fixed: true})
-            {:reply, {:ok, %{answer:  QuizaarWeb.AnswerJSON.show(%{answer: fixed_answer})}}, socket}
+
+            {:reply, {:ok, %{answer: QuizaarWeb.AnswerJSON.show(%{answer: fixed_answer})}},
+             socket}
 
           {:error, failed_operation, failed_value, _changes_so_far} ->
-
-            {:reply, {:error, %{ failed_operation: failed_operation, failed_value: failed_value, message: "Failed updating score"}  }, socket}
+            {:reply,
+             {:error,
+              %{
+                failed_operation: failed_operation,
+                failed_value: failed_value,
+                message: "Failed updating score"
+              }}, socket}
         end
       else
-
         {:reply, {:error, %{message: "No answer found"}}, socket}
       end
     else
-
-       {:reply, {:error, %{message: "You are not authorized"}}, socket}
+      {:reply, {:error, %{message: "You are not authorized"}}, socket}
     end
   end
-
-
 
   def handle_in("get_all_answers_to_current", _payload, socket) do
     current_question = socket.assigns.current_question
@@ -411,7 +415,6 @@ defmodule QuizaarWeb.QuizChannel do
 
       {:reply, {:ok, %{players: player_stats}}, socket}
     else
-
       {:reply, {:error, %{message: "You are not authorized to get player stats"}}, socket}
     end
   end
@@ -479,23 +482,19 @@ defmodule QuizaarWeb.QuizChannel do
             }}, socket}
 
         {:error, :end, reason} ->
-
           broadcast!(socket, "quiz_ended", %{message: "Quiz has ended"})
           {:reply, {:error, reason}, socket}
 
         {:error, reason} ->
-
-
           {:reply, {:error, reason}, socket}
       end
     else
-
       {:reply, {:error, %{message: "You are not authorized to serve questions"}}, socket}
     end
   end
 
   def handle_in("ready_up", _payload, socket) do
-    if socket.assigns.role ==  "player" do
+    if socket.assigns.role == "player" do
       quiz = socket.assigns.quiz
 
       presence_key =
@@ -507,9 +506,8 @@ defmodule QuizaarWeb.QuizChannel do
 
       Presence.update(socket, presence_key, %{ready: true})
       push(socket, "presence_update", Presence.list(socket))
-      {:reply, {:ok, %{"message" => "You are ready"} }, socket}
+      {:reply, {:ok, %{"message" => "You are ready"}}, socket}
     else
-
       {:reply, {:error, %{message: "Only players can ready up"}}, socket}
     end
   end
@@ -528,9 +526,9 @@ defmodule QuizaarWeb.QuizChannel do
 
       Presence.update(socket, presence_key, %{ready: false})
       push(socket, "presence_update", Presence.list(socket))
-      {:reply, {:ok, %{"message" => "You are no longer ready"} }, socket}
+      {:reply, {:ok, %{"message" => "You are no longer ready"}}, socket}
     else
-       {:reply, {:error, %{message: "Only players can unready"}}, socket}
+      {:reply, {:error, %{message: "Only players can unready"}}, socket}
     end
   end
 
@@ -572,18 +570,14 @@ defmodule QuizaarWeb.QuizChannel do
           handle_in("serve_question", %{}, socket)
 
         {:error, :not_ready} ->
-
           {:reply, {:error, %{message: "Not all players are ready"}}, socket}
       end
     else
-
       {:reply, {:error, %{message: "You are not authorized to start the quiz"}}, socket}
     end
   end
 
-
   @impl true
-
 
   def handle_in("delete_player", payload, socket) do
     if socket.assigns.role == "organizer" do
@@ -608,24 +602,20 @@ defmodule QuizaarWeb.QuizChannel do
           {:reply, {:ok, %{player: player_ref}}, socket}
       end
     else
-
-      {:reply, { :error, %{message: "You are not authorized to delete players"}},socket}
+      {:reply, {:error, %{message: "You are not authorized to delete players"}}, socket}
     end
   end
-
 
   @impl true
   def handle_in("ping", payload, socket) do
     {:reply, {:ok, payload}, socket}
   end
 
-
   @impl true
   def handle_in("shout", payload, socket) do
     broadcast(socket, "shout", payload)
     {:noreply, socket}
   end
-
 
   defp authorized(token, socket) do
     case Guardian.decode_and_verify(token) do

@@ -16,8 +16,6 @@ defmodule QuizaarWeb.QuizJSON do
   end
 
   defp data(%Quiz{} = quiz) do
-
-
     %{
       id: quiz.id,
       title: quiz.title,
@@ -25,7 +23,7 @@ defmodule QuizaarWeb.QuizJSON do
       join_code: quiz.join_code,
       user_id: quiz.user_id,
       current_question_id: quiz.current_question_id,
-      inserted_at: quiz.inserted_at,
+      inserted_at: quiz.inserted_at
     }
   end
 
