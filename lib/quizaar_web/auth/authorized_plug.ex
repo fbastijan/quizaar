@@ -31,6 +31,8 @@ defmodule QuizaarWeb.Auth.AuthorizedPlug do
     if conn.assigns.account.user.id == quiz.user_id do
       conn
     else
+      IO.inspect(quiz.user_id, label: "Unauthorized access to quiz")
+      IO.inspect(conn.assigns.account.user.id, label: "Current user ID")
       raise QuizaarWeb.Auth.ErrorResponse.Forbidden
     end
   end

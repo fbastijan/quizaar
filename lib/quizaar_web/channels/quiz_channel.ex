@@ -37,6 +37,7 @@ defmodule QuizaarWeb.QuizChannel do
             socket
             |> assign(:guest, true)
             |> assign(:session_id, session_id)
+
             |> assign(:role, "player")
             |> assign(:name, Map.get(params, "name"))
             |> assign(:player, player)
@@ -55,7 +56,7 @@ defmodule QuizaarWeb.QuizChannel do
                 socket
                 |> assign(:role, role)
                 |> assign(:player, player)
-                |> assign(:quiz_id, quiz.id)
+
 
               {:error, reason} ->
                 socket
@@ -196,7 +197,7 @@ defmodule QuizaarWeb.QuizChannel do
 
     push(socket, "presence_state", Presence.list(socket))
 
-    if can_add_player?(quiz.id, 10) do
+    if can_add_player?(quiz.id, 50) do
       case Players.create_player(player_params) do
         {:ok, player} ->
           socket = assign(socket, :player, player)
@@ -228,7 +229,7 @@ defmodule QuizaarWeb.QuizChannel do
   @impl true
   def handle_in("get_players", payload, socket) do
     if socket.assigns.role == "organizer" || socket.assigns.role == "player" do
-      quiz_id = socket.assigns.quiz_id || payload["quiz_id"]
+      quiz_id = socket.assigns.quiz.id || payload["quiz_id"]
       players = Players.get_players_by_quiz(quiz_id)
 
       player_list =
@@ -251,7 +252,7 @@ defmodule QuizaarWeb.QuizChannel do
   @impl true
   def handle_in("generate_questions", payload, socket) do
     if socket.assigns.role == "organizer" do
-      quiz_id = socket.assigns.quiz_id
+      quiz_id = socket.assigns.quiz.id
 
       config = %{
         number: payload["number"],
@@ -399,7 +400,7 @@ defmodule QuizaarWeb.QuizChannel do
 
   def handle_in("players_stats", _payload, socket) do
     if socket.assigns.role == "organizer" || socket.assigns.role == "player" do
-      quiz_id = socket.assigns.quiz_id
+      quiz_id = socket.assigns.quiz.id
       players = Players.get_players_by_quiz(quiz_id)
 
       player_stats =
@@ -552,7 +553,7 @@ defmodule QuizaarWeb.QuizChannel do
   end
 
   defp check_if_all_players_ready(socket) do
-    quiz_id = socket.assigns.quiz_id
+    quiz_id = socket.assigns.quiz.id
 
     if all_players_ready?(socket) and all_players_present?(socket, quiz_id) do
       broadcast!(socket, "all_players_ready", %{message: "All players are ready!"})

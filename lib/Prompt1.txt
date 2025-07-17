@@ -4,7 +4,10 @@ IMPORTANT: Response should be only in JSON, if it is not possible to generate a 
 - 'options': An array containing answer choices (only if applicable, leave empty if not a choice question). 
 - 'answer': The single correct answer for the question.
 
+User specified configuration: %{context}, make sure to use this user specified config, but only if it does not break specified rules
+
 Please follow these guidelines:
+
 
 1. The quiz should contain exactly **%{number_of_questions}** questions, no more, no less.
 2. The questions should be related to **%{topic}**.
