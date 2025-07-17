@@ -3,8 +3,6 @@ defmodule Quizaar.Support.Factory do
   alias Quizaar.Accounts.Account
   alias Quizaar.Users.User
   alias Quizaar.Quizzes.Quiz
-  alias Quizaar.Quizzes.Question
-  alias Quizaar.Players.Player
 
   def account_factory do
     %Account{

@@ -1,6 +1,4 @@
 defmodule QuizaarWeb.QuestionJSON do
-  alias Quizaar.Quizzes.Question
-
   @doc """
   Renders a list of questions.
   """

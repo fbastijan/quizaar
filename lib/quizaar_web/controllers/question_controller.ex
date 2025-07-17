@@ -7,6 +7,7 @@ defmodule QuizaarWeb.QuestionController do
   action_fallback QuizaarWeb.FallbackController
   import QuizaarWeb.Auth.AuthorizedPlug
   plug :is_authorized when action in [:update, :delete, :generate_questions]
+
   def index(conn, _params) do
     questions = Quizzes.list_questions()
     render(conn, :index, questions: questions)
@@ -14,6 +15,7 @@ defmodule QuizaarWeb.QuestionController do
 
   def generate_questions(conn, %{"quiz_id" => quiz_id} = params) do
     config = Map.delete(params, "quiz_id")
+
     with {:ok, questions} <- Quizzes.create_questions(quiz_id, config) do
       conn
       |> put_status(:created)

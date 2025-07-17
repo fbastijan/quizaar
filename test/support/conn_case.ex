@@ -33,7 +33,7 @@ defmodule QuizaarWeb.ConnCase do
   end
 
   setup tags do
-    Quizaar.DataCase.setup_sandbox(tags)
+    Quizaar.Support.DataCase.setup_sandbox(tags)
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
 end

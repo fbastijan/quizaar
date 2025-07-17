@@ -3,8 +3,6 @@ defmodule QuizaarWeb.UserController do
 
   alias Quizaar.Users
   alias Quizaar.Users.User
-  alias QuizaarWeb.Accounts.Account
-  alias QuizarWeb.Accounts
 
   action_fallback QuizaarWeb.FallbackController
   import QuizaarWeb.Auth.AuthorizedPlug

@@ -149,7 +149,7 @@ defmodule QuizaarWeb.QuizChannelTest do
       assert_reply ref, :error, %{message: "You are not authorized to generate questions"}, 1000
     end
 
-    test "handle_in/3 get_players", %{socket: socket, quiz: quiz, player_socket: player_socket} do
+    test "handle_in/3 get_players", %{socket: socket, player_socket: player_socket} do
       ref = push(socket, "get_players", %{})
 
       assert_reply ref, :ok, %{players: players}, 1000
@@ -167,7 +167,7 @@ defmodule QuizaarWeb.QuizChannelTest do
       assert question.data.used == true
     end
 
-    test "handle_in/3 serve_question when no questions", %{socket: socket, quiz: quiz} do
+    test "handle_in/3 serve_question when no questions", %{socket: socket} do
       ref = push(socket, "serve_question", %{})
 
       assert_reply ref, :error, reason, 1000
@@ -187,7 +187,7 @@ defmodule QuizaarWeb.QuizChannelTest do
       assert player.id == player_id
     end
 
-    test "handle_in/3 no player to delete", %{player_socket: player_socket, socket: socket} do
+    test "handle_in/3 no player to delete", %{socket: socket} do
       player_id = socket.assigns.account.id
       ref = push(socket, "delete_player", %{player_id: player_id})
       assert_reply ref, :error, %{message: "Player not found to delete"}
@@ -252,9 +252,8 @@ defmodule QuizaarWeb.QuizChannelTest do
 
       quiz = Factory.insert(:quiz, join_code: "handletest", user_id: user.id, user: user)
 
-      question =
-        Factory.insert(:question, quiz_id: quiz.id, quiz: quiz)
-        |> Map.from_struct()
+      Factory.insert(:question, quiz_id: quiz.id, quiz: quiz)
+      |> Map.from_struct()
 
       {:ok, _, socket} =
         socket(UserSocket)
@@ -284,7 +283,7 @@ defmodule QuizaarWeb.QuizChannelTest do
       assert_reply ref, :ok, %{result: _, answer: _}, 1000
     end
 
-    test "handle_in/3 ready player", %{player_socket: player_socket, quiz: quiz} do
+    test "handle_in/3 ready player", %{player_socket: player_socket, quiz: _quiz} do
       session_id = player_socket.assigns.player.session_id
       ref = push(player_socket, "ready_up", %{})
       assert_reply ref, :ok, %{"message" => "You are ready"}
@@ -301,10 +300,9 @@ defmodule QuizaarWeb.QuizChannelTest do
     end
 
     test "handle_in/3 unready", %{player_socket: player_socket} do
-      session_id = player_socket.assigns.player.session_id
       ref = push(player_socket, "unready", %{})
       assert_reply ref, :ok, %{"message" => "You are no longer ready"}
-      assert_push "presence_update", presence
+      assert_push "presence_update", _presence
     end
   end
 end

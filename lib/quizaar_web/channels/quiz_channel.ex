@@ -37,7 +37,6 @@ defmodule QuizaarWeb.QuizChannel do
             socket
             |> assign(:guest, true)
             |> assign(:session_id, session_id)
-
             |> assign(:role, "player")
             |> assign(:name, Map.get(params, "name"))
             |> assign(:player, player)
@@ -57,8 +56,7 @@ defmodule QuizaarWeb.QuizChannel do
                 |> assign(:role, role)
                 |> assign(:player, player)
 
-
-              {:error, reason} ->
+              {:error, _reason} ->
                 socket
             end
         end
@@ -96,7 +94,6 @@ defmodule QuizaarWeb.QuizChannel do
 
   @impl true
   def handle_info(:after_join, socket) do
-    join_code = socket.assigns.join_code
     quiz = socket.assigns.quiz
 
     socket =
@@ -105,7 +102,7 @@ defmodule QuizaarWeb.QuizChannel do
         push(socket, "question_closed", %{message: "Time is up! No more answers allowed."})
         socket
       else
-        socket = assign(socket, :question_closed, false)
+        assign(socket, :question_closed, false)
       end
 
     socket =
@@ -277,17 +274,6 @@ defmodule QuizaarWeb.QuizChannel do
     end
   end
 
-  defp time_left(quiz) do
-    if quiz.current_question_id && quiz.question_started_at && quiz.question_time_limit do
-      now = DateTime.utc_now()
-      end_time = DateTime.add(quiz.question_started_at, quiz.question_time_limit, :second)
-      time_left = DateTime.diff(end_time, now, :second)
-      if time_left < 0, do: 0, else: time_left
-    else
-      0
-    end
-  end
-
   def handle_in("get_current_question", _payload, socket) do
     current_question = socket.assigns.current_question
     quiz = socket.assigns.quiz
@@ -308,8 +294,7 @@ defmodule QuizaarWeb.QuizChannel do
 
       question =
         if changeset.valid? do
-          question = Ecto.Changeset.apply_changes(changeset)
-          # Now you have a struct with atom keys and proper types!
+          Ecto.Changeset.apply_changes(changeset)
         else
           nil
         end
@@ -420,7 +405,7 @@ defmodule QuizaarWeb.QuizChannel do
     end
   end
 
-  def handle_in("player_stats", payload, socket) do
+  def handle_in("player_stats", _payload, socket) do
     if socket.assigns.role == "organizer" || socket.assigns.role == "player" do
       player = socket.assigns.player
       quiz = socket.assigns.quiz
@@ -496,8 +481,6 @@ defmodule QuizaarWeb.QuizChannel do
 
   def handle_in("ready_up", _payload, socket) do
     if socket.assigns.role == "player" do
-      quiz = socket.assigns.quiz
-
       presence_key =
         cond do
           Map.has_key?(socket.assigns, :session_id) -> socket.assigns.session_id
@@ -516,8 +499,6 @@ defmodule QuizaarWeb.QuizChannel do
   @impl true
   def handle_in("unready", _payload, socket) do
     if socket.assigns.role == "organizer" || "player" do
-      quiz = socket.assigns.quiz
-
       presence_key =
         cond do
           Map.has_key?(socket.assigns, :session_id) -> socket.assigns.session_id
@@ -530,36 +511,6 @@ defmodule QuizaarWeb.QuizChannel do
       {:reply, {:ok, %{"message" => "You are no longer ready"}}, socket}
     else
       {:reply, {:error, %{message: "Only players can unready"}}, socket}
-    end
-  end
-
-  defp all_players_ready?(socket) do
-    players = Presence.list(socket)
-
-    Enum.all?(players, fn
-      {_key, %{metas: metas}} ->
-        Enum.any?(metas, fn meta -> meta[:ready] == true end)
-    end)
-  end
-
-  defp all_players_present?(socket, quiz_id) do
-    players_present = Presence.list(socket)
-    players = Players.get_players_by_quiz(quiz_id)
-
-    Enum.all?(players, fn player ->
-      Map.has_key?(players_present, player.session_id) ||
-        Map.has_key?(players_present, player.user_id)
-    end)
-  end
-
-  defp check_if_all_players_ready(socket) do
-    quiz_id = socket.assigns.quiz.id
-
-    if all_players_ready?(socket) and all_players_present?(socket, quiz_id) do
-      broadcast!(socket, "all_players_ready", %{message: "All players are ready!"})
-      {:ok, socket}
-    else
-      {:error, :not_ready}
     end
   end
 
@@ -627,6 +578,47 @@ defmodule QuizaarWeb.QuizChannel do
 
       {:error, _reason} ->
         {:error, :unauthorized}
+    end
+  end
+
+  defp all_players_ready?(socket) do
+    players = Presence.list(socket)
+
+    Enum.all?(players, fn
+      {_key, %{metas: metas}} ->
+        Enum.any?(metas, fn meta -> meta[:ready] == true end)
+    end)
+  end
+
+  defp all_players_present?(socket, quiz_id) do
+    players_present = Presence.list(socket)
+    players = Players.get_players_by_quiz(quiz_id)
+
+    Enum.all?(players, fn player ->
+      Map.has_key?(players_present, player.session_id) ||
+        Map.has_key?(players_present, player.user_id)
+    end)
+  end
+
+  defp check_if_all_players_ready(socket) do
+    quiz_id = socket.assigns.quiz.id
+
+    if all_players_ready?(socket) and all_players_present?(socket, quiz_id) do
+      broadcast!(socket, "all_players_ready", %{message: "All players are ready!"})
+      {:ok, socket}
+    else
+      {:error, :not_ready}
+    end
+  end
+
+  defp time_left(quiz) do
+    if quiz.current_question_id && quiz.question_started_at && quiz.question_time_limit do
+      now = DateTime.utc_now()
+      end_time = DateTime.add(quiz.question_started_at, quiz.question_time_limit, :second)
+      time_left = DateTime.diff(end_time, now, :second)
+      if time_left < 0, do: 0, else: time_left
+    else
+      0
     end
   end
 end
