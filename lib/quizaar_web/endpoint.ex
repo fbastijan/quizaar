@@ -45,7 +45,6 @@ defmodule QuizaarWeb.Endpoint do
 
   plug Corsica,
     origins: [
-      "http://localhost:5173",
       "http://116.203.210.54:8081"
     ],
     max_age: 86400,
