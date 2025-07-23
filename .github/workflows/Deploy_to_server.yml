@@ -33,4 +33,4 @@ jobs:
 
     - name: Build and run Docker Compose
       run: |
-        ssh root@116.203.210.54 "cd /opt/quizaar && docker-compose pull && docker-compose build && docker-compose up -d"
+        ssh root@116.203.210.54 "cd /opt/quizaar && docker compose pull && docker compose build && docker compose up -d"
