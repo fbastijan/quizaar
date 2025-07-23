@@ -30,7 +30,7 @@ config :logger, :console,
 
 config :quizaar, QuizaarWeb.Auth.Guardian,
   issuer: "quizaar",
-  secret_key: System.get_env("GUARDIAN_KEY")
+  secret_key: System.get_env("GUARDIAN_KEY") || "dctGkjgl2FJfPfXs11ycHSgQzpiujGV8mMKBPKv9pBxy31eNCGCiqd/LlTH36R45"
 
 config :guardian, Guardian.DB,
   repo: Quizaar.Repo,
