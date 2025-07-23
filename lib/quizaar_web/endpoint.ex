@@ -45,7 +45,8 @@ defmodule QuizaarWeb.Endpoint do
 
   plug Corsica,
     origins: [
-      "http://116.203.210.54:8081"
+      "http://116.203.210.54:8081",
+       "http://116.203.210.54"
     ],
     max_age: 86400,
     allow_headers: :all,
