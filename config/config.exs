@@ -14,7 +14,7 @@ config :quizaar,
 # Configures the endpoint
 config :quizaar, QuizaarWeb.Endpoint,
   url: [host: "localhost"],
-  check_origin: ["//localhost:5173"],
+  check_origin: ["//localhost:5173", "http://116.203.210.54:8081"],
   adapter: Bandit.PhoenixAdapter,
   render_errors: [
     formats: [json: QuizaarWeb.ErrorJSON],
