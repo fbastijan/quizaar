@@ -20,7 +20,7 @@ services:
       SECRET_KEY_BASE: ${SECRET_KEY_BASE}
       GROQ_API_KEY: ${GROQ_API_KEY}
     ports:
-      - "4000:4000"
+      - "4001:4001"
     command: >
       sh -c "./bin/quizaar eval \"Quizaar.Release.migrate\" && ./bin/quizaar start"
 
