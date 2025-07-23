@@ -8,13 +8,11 @@ defmodule QuizaarWeb.Auth.SetAccount do
 
   def call(conn, _options) do
     if conn.assigns[:account] do
-
       conn
     else
       account_id = get_session(conn, :account_id)
 
       if account_id == nil do
-
         raise ErrorResponse.Unauthorized
       end
 

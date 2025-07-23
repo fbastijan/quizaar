@@ -195,7 +195,7 @@ defmodule Quizaar.Quizzes do
     headers = [
       {"Content-Type", "application/json"},
       # Ensure the API key is set in your environment variables
-      {"Authorization", "Bearer #{System.get_env("GROQ_API_KEY")  |> String.trim()}"},
+      {"Authorization", "Bearer #{System.get_env("GROQ_API_KEY") |> String.trim()}"},
       {"Accept", "application/json"}
     ]
 
@@ -218,11 +218,12 @@ defmodule Quizaar.Quizzes do
     case Finch.request(request, Quizaar.Finch) do
       {:ok, %Finch.Response{status: 200, body: response_body}} ->
         case Jason.decode(response_body) do
-          {:ok, decoded_body} -> {:ok, decoded_body}
+          {:ok, decoded_body} ->
+            {:ok, decoded_body}
+
           {:error, decode_error} ->
             IO.inspect(decode_error, label: "Error occurred")
             {:error, {:decode_error, decode_error}}
-
         end
 
       {:ok, %Finch.Response{status: status_code, body: error_body}} ->
@@ -259,14 +260,14 @@ defmodule Quizaar.Quizzes do
     - `{:error, reason}` on failure.
   """
   def read_prompt(filename) do
-      path = Path.join(:code.priv_dir(:quizaar), filename)
+    path = Path.join(:code.priv_dir(:quizaar), filename)
+
     case File.read(path) do
       {:ok, content} ->
         # Trim any extra whitespace
         {:ok, String.trim(content)}
 
       {:error, reason} ->
-
         {:error, reason}
     end
   end
@@ -307,7 +308,6 @@ defmodule Quizaar.Quizzes do
       {:ok, res} ->
         case res["choices"] do
           [%{"message" => %{"content" => content}} | _] ->
-
             case Jason.decode(content) do
               {:ok, json} ->
                 {:ok, json}
@@ -327,9 +327,7 @@ defmodule Quizaar.Quizzes do
             do_generate_questions(number, topic, context, difficulty, attempt + 1, max_attempts)
         end
 
-
       {:error, reason} ->
-
         do_generate_questions(number, topic, context, difficulty, attempt + 1, max_attempts)
     end
   end
