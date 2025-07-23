@@ -14,6 +14,7 @@ config :quizaar,
 # Configures the endpoint
 config :quizaar, QuizaarWeb.Endpoint,
   url: [host: "localhost"],
+  check_origin: ["//localhost:5173"],
   adapter: Bandit.PhoenixAdapter,
   render_errors: [
     formats: [json: QuizaarWeb.ErrorJSON],
@@ -29,7 +30,7 @@ config :logger, :console,
 
 config :quizaar, QuizaarWeb.Auth.Guardian,
   issuer: "quizaar",
-  secret_key: "G5UZdqYZTTRJ2GqMwUoeai+XjBG9ZgKn6GCcu9Omf5p0Y+2N68KP5twU6YCxDcrl"
+  secret_key:  System.get_env("GUARDIAN_KEY")
 
 config :guardian, Guardian.DB,
   repo: Quizaar.Repo,

@@ -6,7 +6,7 @@ defmodule QuizaarWeb.QuestionController do
 
   action_fallback QuizaarWeb.FallbackController
   import QuizaarWeb.Auth.AuthorizedPlug
-  plug :is_authorized when action in [:update, :delete, :generate_questions]
+  plug :is_authorized when action in [:update, :delete]
 
   def index(conn, _params) do
     questions = Quizzes.list_questions()

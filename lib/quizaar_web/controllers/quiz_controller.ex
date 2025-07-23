@@ -17,7 +17,7 @@ defmodule QuizaarWeb.QuizController do
     updated_params =
       quiz_params
       |> Map.put("user_id", conn.assigns.account.user.id)
-
+    IO.inspect(updated_params, label: "Updated quiz params")
     with {:ok, %Quiz{} = quiz} <- Quizzes.create_quiz(updated_params) do
       conn
       |> put_status(:created)

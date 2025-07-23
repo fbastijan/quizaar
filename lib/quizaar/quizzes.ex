@@ -195,7 +195,7 @@ defmodule Quizaar.Quizzes do
     headers = [
       {"Content-Type", "application/json"},
       # Ensure the API key is set in your environment variables
-      {"Authorization", "Bearer #{System.get_env("GROQ_API_KEY")}"},
+      {"Authorization", "Bearer #{System.get_env("GROQ_API_KEY")  |> String.trim()}"},
       {"Accept", "application/json"}
     ]
 
@@ -219,13 +219,19 @@ defmodule Quizaar.Quizzes do
       {:ok, %Finch.Response{status: 200, body: response_body}} ->
         case Jason.decode(response_body) do
           {:ok, decoded_body} -> {:ok, decoded_body}
-          {:error, decode_error} -> {:error, {:decode_error, decode_error}}
+          {:error, decode_error} ->
+            IO.inspect(decode_error, label: "Error occurred")
+            {:error, {:decode_error, decode_error}}
+
         end
 
       {:ok, %Finch.Response{status: status_code, body: error_body}} ->
+        IO.inspect(error_body, label: "Error response body")
+
         {:error, {:http_error, status_code, error_body}}
 
       {:error, reason} ->
+        IO.inspect(reason, label: "Request error")
         {:error, {:request_error, reason}}
     end
   end
@@ -252,13 +258,15 @@ defmodule Quizaar.Quizzes do
     - `{:ok, content}` on success, where `content` is the parsed prompt.
     - `{:error, reason}` on failure.
   """
-  def read_prompt(file_path) do
-    case File.read(file_path) do
+  def read_prompt(filename) do
+      path = Path.join(:code.priv_dir(:quizaar), filename)
+    case File.read(path) do
       {:ok, content} ->
         # Trim any extra whitespace
         {:ok, String.trim(content)}
 
       {:error, reason} ->
+
         {:error, reason}
     end
   end
@@ -287,7 +295,7 @@ defmodule Quizaar.Quizzes do
 
   defp do_generate_questions(number, topic, context, difficulty, attempt, max_attempts)
        when attempt < max_attempts do
-    {:ok, prompt} = read_prompt("lib/Prompt1.txt")
+    {:ok, prompt} = read_prompt("Prompt1.txt")
 
     updated_prompt =
       String.replace(prompt, ~r/%{number_of_questions}/, Integer.to_string(number))
@@ -299,6 +307,7 @@ defmodule Quizaar.Quizzes do
       {:ok, res} ->
         case res["choices"] do
           [%{"message" => %{"content" => content}} | _] ->
+
             case Jason.decode(content) do
               {:ok, json} ->
                 {:ok, json}
@@ -318,7 +327,9 @@ defmodule Quizaar.Quizzes do
             do_generate_questions(number, topic, context, difficulty, attempt + 1, max_attempts)
         end
 
-      {:error, _reason} ->
+
+      {:error, reason} ->
+
         do_generate_questions(number, topic, context, difficulty, attempt + 1, max_attempts)
     end
   end
@@ -700,7 +711,7 @@ defmodule Quizaar.Quizzes do
   end
 
   defp corrected_by_llm(question, user_answer) do
-    {:ok, prompt} = read_prompt("lib/Prompt2.txt")
+    {:ok, prompt} = read_prompt("Prompt2.txt")
 
     updated_prompt =
       String.replace(prompt, ~r/%{question}/, question)
