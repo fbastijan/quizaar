@@ -23,9 +23,14 @@ jobs:
         mkdir -p ~/.ssh
         echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
 
-    - name: Deploy via SSH
+    - name: Copy code to server
       run: |
-        ssh root@116.203.210.54 << 'EOF'
-         
-        
-        EOF
+        rsync -az --delete -e "ssh" ./ root@116.203.210.54:/opt/quizaar
+
+    - name: Write .env on server
+      run: |
+        ssh root@116.203.210.54 "printf '%s\n' '${{ secrets.ENV_PROD }}' > /opt/quizaar/.env"
+
+    - name: Build and run Docker Compose
+      run: |
+        ssh root@116.203.210.54 "cd /opt/quizaar && docker-compose pull && docker-compose build && docker-compose up -d"
