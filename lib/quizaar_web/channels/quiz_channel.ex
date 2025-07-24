@@ -67,8 +67,8 @@ defmodule QuizaarWeb.QuizChannel do
     end
   end
 
-  def can_add_player?(quiz_id, max_players \\ 10) do
-    count = Players.count_players_for_quiz(quiz_id)
+  def can_add_player?(quiz, max_players \\ 10) do
+    count = Players.count_players_for_quiz(quiz.id)
     count < max_players
   end
 
@@ -140,7 +140,7 @@ defmodule QuizaarWeb.QuizChannel do
       })
     end
 
-    if socket.assigns.role == "player" do
+    if socket.assigns.role == "player" and socket.assigns.quiz.current_question_id == nil do
       cond do
         account = socket.assigns[:account] ->
           handle_registered_player(socket, quiz, account)
@@ -149,8 +149,10 @@ defmodule QuizaarWeb.QuizChannel do
           handle_guest_player(socket, quiz)
       end
     else
-      # If the user is not a player, just assign the quiz and role
+
+
       push(socket, "presence_state", Presence.list(socket))
+
       {:noreply, socket}
     end
   end
@@ -194,7 +196,7 @@ defmodule QuizaarWeb.QuizChannel do
 
     push(socket, "presence_state", Presence.list(socket))
 
-    if can_add_player?(quiz.id, 50) do
+    if can_add_player?(quiz, 50) do
       case Players.create_player(player_params) do
         {:ok, player} ->
           socket = assign(socket, :player, player)
@@ -211,14 +213,13 @@ defmodule QuizaarWeb.QuizChannel do
           {:noreply, socket}
 
         {:error, changeset} ->
-          push(socket, "error", %{message: "Failed to create player", details: inspect(changeset)})
-
-          {:noreply, socket}
+          push(socket, "error", %{message: "Failed to create player"})
+            {:noreply, socket}
       end
     else
       socket = assign(socket, :role, "spectator")
       Presence.update(socket, presence_key, %{role: "spectator"})
-      push(socket, "info", %{message: "Max players reached, you are a spectator"})
+      push(socket, "spectator", %{message: "Max players reached, you are a spectator"})
       {:noreply, socket}
     end
   end
@@ -286,8 +287,9 @@ defmodule QuizaarWeb.QuizChannel do
 
   @impl true
   def handle_in("answer_question", payload, socket) do
+
     if socket.assigns.role != "player" do
-      push(socket, "error", %{message: "Only players can answer questions"})
+
       {:reply, {:error, "Only players can answer questions"}, socket}
     else
       changeset = Question.changeset(%Quizzes.Question{}, payload["question"])
@@ -302,29 +304,36 @@ defmodule QuizaarWeb.QuizChannel do
       player = socket.assigns.player
       expired = socket.assigns[:question_closed] || false
 
-      answered =
-        Quizzes.check_if_answered(player.id, question.id)
 
-      if player != nil and not answered and not expired do
-        quiz = Quizzes.get_quiz!(socket.assigns.quiz.id)
-        answer = payload["answer"]
+     cond do
+      is_nil(player) ->
 
-        case Quizzes.answer_and_score(question, quiz, player.id, answer) do
-          {:ok, %{result: result, answer: answer}} ->
-            # Handle the successful response
+        {:reply, {:error, "You are not a player"}, socket}
 
-            broadcast!(socket, "answer_received", %{})
-            {:reply, {:ok, %{result: result.score, answer: answer.id}}, socket}
+      is_nil(question) ->
 
-          _ ->
-            # Handle the error response
-            push(socket, "error", %{message: "Error verifying answer"})
-            {:noreply, socket}
+        {:reply, {:error, "Invalid question"}, socket}
+
+      true ->
+        answered = Quizzes.check_if_answered(player.id, question.id)
+        if not answered and not expired do
+          quiz = Quizzes.get_quiz!(socket.assigns.quiz.id)
+          answer = payload["answer"]
+
+          case Quizzes.answer_and_score(question, quiz, player.id, answer) do
+            {:ok, %{result: result, answer: answer}} ->
+              broadcast!(socket, "answer_received", %{})
+              {:reply, {:ok, %{result: result.score, answer: answer.id}}, socket}
+
+            _ ->
+
+
+              {:reply, {:error, "Error verifying answer"}, socket}
+          end
+        else
+          {:reply, {:error, "already answered"}, socket}
         end
-      else
-        push(socket, "error", %{message: "already answered"})
-        {:noreply, socket}
-      end
+    end
     end
   end
 
@@ -363,7 +372,7 @@ defmodule QuizaarWeb.QuizChannel do
     quiz = socket.assigns.quiz
 
     if current_question == nil do
-      push(socket, "error", %{message: "No current question"})
+
       {:reply, {:error, "No current question"}, socket}
     end
 
@@ -432,12 +441,10 @@ defmodule QuizaarWeb.QuizChannel do
             }
           }}, socket}
       else
-        push(socket, "error", %{message: "Player not found"})
-        {:noreply, socket}
+        {:reply, {:error, "Player not found"}, socket}
       end
     else
-      push(socket, "error", %{message: "You are not authorized to get player stats"})
-      {:noreply, socket}
+      {:reply, {:error, "You are not authorized to get player stats"}, socket}
     end
   end
 
