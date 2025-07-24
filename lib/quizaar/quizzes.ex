@@ -227,7 +227,7 @@ defmodule Quizaar.Quizzes do
         end
 
       {:ok, %Finch.Response{status: status_code, body: error_body}} ->
-        IO.inspect(error_body, label: "Error response body")
+
 
         {:error, {:http_error, status_code, error_body}}
 
@@ -400,8 +400,8 @@ defmodule Quizaar.Quizzes do
             {:ok, questions}
         end
 
-      {:error, reason} ->
-        {:error, reason}
+      {:error, _} ->
+        {:error, :creating_questions}
     end
   end
 

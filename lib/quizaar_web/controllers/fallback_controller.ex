@@ -21,4 +21,12 @@ defmodule QuizaarWeb.FallbackController do
     |> put_view(html: QuizaarWeb.ErrorHTML, json: QuizaarWeb.ErrorJSON)
     |> render(:"404")
   end
+
+
+  def call(conn, {:error, :creating_questions}) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> put_view(html: QuizaarWeb.ErrorHTML, json: QuizaarWeb.ErrorJSON)
+    |> render(:"500")
+  end
 end
