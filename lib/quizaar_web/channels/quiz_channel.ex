@@ -120,12 +120,13 @@ defmodule QuizaarWeb.QuizChannel do
 
               answered =
                 if player do
-                  Quizzes.check_if_answered(socket.assigns.player.id, question.id) || false
+                  Quizzes.get_answer(player.id, question.id)
                 end
 
-              if answered do
+              if answered != nil do
                 push(socket, "question_closed", %{
-                  message: "You have already answered this question."
+                  message: "You have already answered this question.",
+                  answer: QuizaarWeb.AnswerJSON.show(%{answer: answered})
                 })
               end
 

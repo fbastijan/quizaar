@@ -515,6 +515,8 @@ defmodule Quizaar.Quizzes do
   """
   def get_answer!(id), do: Repo.get!(Answer, id)
 
+  def get_answer(player_id, question_id), do: Repo.get_by(Answer, player_id: player_id, question_id: question_id)
+
   @doc """
   Creates a answer.
 
