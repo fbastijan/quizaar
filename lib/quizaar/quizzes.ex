@@ -452,25 +452,25 @@ defmodule Quizaar.Quizzes do
     Question.changeset(question, attrs)
   end
 
-  def handle_question(%Quiz{} = quiz, %Question{} = question, time_limit) do
+  def handle_question(%Quiz{} = quiz, %Question{} = question) do
     Multi.new()
     |> Multi.update(
       :quiz,
       Quiz.changeset(quiz, %{
         current_question_id: question.id,
         question_started_at: DateTime.utc_now(),
-        question_time_limit: time_limit
+
       })
     )
     |> Multi.update(:question, Question.changeset(question, %{used: true}))
     |> Repo.transaction()
   end
 
-  def serve_question(%Quiz{} = quiz, time_limit \\ 60) do
+  def serve_question(%Quiz{} = quiz) do
     question = Repo.one(from q in Question, where: q.quiz_id == ^quiz.id and not q.used, limit: 1)
 
     if question do
-      case handle_question(quiz, question, time_limit) do
+      case handle_question(quiz, question) do
         {:ok, res} ->
           # Successfully updated the quiz and question
           {:ok, res.question, res.quiz}
