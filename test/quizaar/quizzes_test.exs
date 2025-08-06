@@ -142,20 +142,20 @@ defmodule Quizaar.QuizzesTest do
       quiz = Factory.insert(:quiz)
       Factory.insert(:question, quiz: quiz, quiz_id: quiz.id, used: false)
 
-      assert {:ok, updated_question, quiz} = Quizzes.serve_question(quiz, 120)
+      assert {:ok, updated_question, quiz} = Quizzes.serve_question(quiz)
       db_question = Repo.get(Quizaar.Quizzes.Question, updated_question.id)
       db_quiz = Repo.get(Quizaar.Quizzes.Quiz, quiz.id)
       assert db_question.used == true
       assert db_question.quiz_id == quiz.id
 
-      assert db_quiz.question_time_limit == 120
+
       assert quiz.current_question_id == db_question.id
     end
   end
 
   describe "answer_and_score/4" do
     test "returns scores answer positively if answer is correct" do
-      quiz = Factory.insert(:quiz)
+      quiz = Factory.insert(:quiz, question_time_limit: 120)
 
       Factory.insert(:question,
         quiz: quiz,
@@ -164,7 +164,7 @@ defmodule Quizaar.QuizzesTest do
         answer: "Correct Answer"
       )
 
-      assert {:ok, updated_question, quiz} = Quizzes.serve_question(quiz, 120)
+      assert {:ok, updated_question, quiz} = Quizzes.serve_question(quiz)
       player = Factory.insert(:player, quiz: quiz, quiz_id: quiz.id)
       user_answer = "Correct Answer"
 
@@ -177,7 +177,7 @@ defmodule Quizaar.QuizzesTest do
     end
 
     test "returns scores answer negatively if answer is incorrect" do
-      quiz = Factory.insert(:quiz)
+      quiz = Factory.insert(:quiz, question_time_limit: 120)
 
       Factory.insert(:question,
         quiz: quiz,
@@ -186,7 +186,7 @@ defmodule Quizaar.QuizzesTest do
         answer: "Correct Answer"
       )
 
-      assert {:ok, updated_question, quiz} = Quizzes.serve_question(quiz, 120)
+      assert {:ok, updated_question, quiz} = Quizzes.serve_question(quiz)
       player = Factory.insert(:player, quiz: quiz, quiz_id: quiz.id)
       user_answer = "Wrong Answer"
 
@@ -201,7 +201,7 @@ defmodule Quizaar.QuizzesTest do
 
   describe "fix_answer_scoring/2" do
     test "updates answer and result with correct score" do
-      quiz = Factory.insert(:quiz)
+      quiz = Factory.insert(:quiz, question_time_limit: 120)
 
       Factory.insert(:question,
         quiz: quiz,
@@ -210,7 +210,7 @@ defmodule Quizaar.QuizzesTest do
         answer: "Correct Answer"
       )
 
-      assert {:ok, updated_question, quiz} = Quizzes.serve_question(quiz, 120)
+      assert {:ok, updated_question, quiz} = Quizzes.serve_question(quiz)
       player = Factory.insert(:player, quiz: quiz, quiz_id: quiz.id)
 
       user_answer = "Correct Answer"
