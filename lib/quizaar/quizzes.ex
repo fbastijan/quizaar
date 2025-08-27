@@ -194,7 +194,7 @@ defmodule Quizaar.Quizzes do
   def query_llm(prompt) do
     headers = [
       {"Content-Type", "application/json"},
-      # Ensure the API key is set in your environment variables
+
       {"Authorization", "Bearer #{System.get_env("GROQ_API_KEY") |> String.trim()}"},
       {"Accept", "application/json"}
     ]
@@ -472,11 +472,11 @@ defmodule Quizaar.Quizzes do
     if question do
       case handle_question(quiz, question) do
         {:ok, res} ->
-          # Successfully updated the quiz and question
+
           {:ok, res.question, res.quiz}
 
         {:error, _} ->
-          # Handle error case
+
           {:error, "Failed to update quiz or question"}
       end
     else
@@ -730,15 +730,15 @@ defmodule Quizaar.Quizzes do
 
   defp check_if_correct(%Question{} = question, user_answer) do
     cond do
-      # Exact match (normalized)
+
       normalize_answer(user_answer) == normalize_answer(question.answer) ->
         true
 
-      # If options exist and answer is not correct, it's simply wrong
+
       not Enum.empty?(question.options) ->
         false
 
-      # Otherwise, fallback to LLM correction
+
       true ->
         case corrected_by_llm(question.text, user_answer) do
           {:ok, res} ->
@@ -779,7 +779,7 @@ defmodule Quizaar.Quizzes do
 
     is_correct = check_if_correct(question, user_answer)
 
-    # Calculate score only if correct
+
     score =
       if is_correct do
         calculate_score(
@@ -878,7 +878,7 @@ defmodule Quizaar.Quizzes do
     alias Quizaar.Quizzes.Result
     alias Quizaar.Players.Player
 
-    # Get all players for this quiz and their scores, sorted descending
+
     results =
       from(p in Player,
         where: p.quiz_id == ^quiz_id,

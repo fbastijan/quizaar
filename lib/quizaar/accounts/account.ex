@@ -23,6 +23,7 @@ defmodule Quizaar.Accounts.Account do
     |> validate_required(all_fields() -- @optional_fields)
     |> validate_format(:email, ~r/^[^\s]+@[^\s]+$/, message: "must have @ sign and no spaces")
     |> validate_length(:email, max: 160)
+    |> validate_length(:hash_password, min: 8, max: 72)
     |> unique_constraint(:email)
     |> put_password_hash()
   end

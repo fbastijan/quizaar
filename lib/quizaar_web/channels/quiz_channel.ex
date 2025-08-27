@@ -24,7 +24,7 @@ defmodule QuizaarWeb.QuizChannel do
       socket =
         case Map.get(params, "token") do
           nil ->
-            # Guest: assign a session_id and guest role
+
             session_id =
               case Map.get(params, "session_id") do
                 nil -> Ecto.UUID.generate()
@@ -88,7 +88,7 @@ defmodule QuizaarWeb.QuizChannel do
   @impl true
   def handle_info(:close_question, socket) do
     broadcast!(socket, "question_closed", %{message: "Time is up! No more answers allowed."})
-    # Optionally, update socket assigns or state to disallow further answers
+
     {:noreply, assign(socket, :question_closed, true)}
   end
 
@@ -262,12 +262,12 @@ defmodule QuizaarWeb.QuizChannel do
 
       case Quizzes.create_questions(quiz_id, config) do
         {:ok, _questions} ->
-          # Handle the successful response
+
           push(socket, "questions_generated", %{questions: "questions"})
           {:reply, {:ok, %{"message" => "Questions generated successfully"}}, socket}
 
         {:error, reason} ->
-          # Handle the error response
+
 
           {:reply, {:error, reason}, socket}
       end
@@ -455,7 +455,7 @@ defmodule QuizaarWeb.QuizChannel do
 
       case Quizzes.serve_question(quiz) do
         {:ok, question, quiz} ->
-          # Handle the successful response
+
           socket =
             socket
             |> assign(:current_question, question)
@@ -545,7 +545,7 @@ defmodule QuizaarWeb.QuizChannel do
 
       case Players.get_player(player_id) do
         nil ->
-          # Handle the error response
+
 
           {:reply, {:error, %{message: "Player not found to delete"}}, socket}
 
