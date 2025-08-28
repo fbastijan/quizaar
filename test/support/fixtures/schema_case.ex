@@ -26,6 +26,7 @@ defmodule Quizaar.Support.SchemaCase do
     for {field, type} <- fields_with_types, into: %{} do
       case field do
         :email -> {Atom.to_string(field), Faker.Internet.email()}
+        :hash_password -> {Atom.to_string(field), Enum.map(1..9, fn _ -> Enum.random(?a..?z) end) |> to_string()}
         _ -> {Atom.to_string(field), valid_value_by_type[type].()}
       end
     end

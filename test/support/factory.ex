@@ -7,7 +7,7 @@ defmodule Quizaar.Support.Factory do
   def account_factory do
     %Account{
       email: Faker.Internet.email(),
-      hash_password: Faker.Internet.slug()
+     hash_password: Enum.map(1..9, fn _ -> Enum.random(?a..?z) end) |> to_string()
     }
   end
 
